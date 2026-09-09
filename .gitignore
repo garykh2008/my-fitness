@@ -1,0 +1,20 @@
+node_modules/
+.next/
+out/
+build/
+
+# 環境變數：一律不進版控，只留 .example
+.env
+.env.local
+.env.production
+.env*.local
+
+npm-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+next-env.d.ts
+
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

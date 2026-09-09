@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    container_name: my-fitness
+    restart: unless-stopped
+    # 只綁在 localhost，一律經由前面的 Caddy 反向代理（TLS）進來。
+    # 對外主機埠預設 3400（3100 是 my-library、3300 是 todo）；可用 APP_PORT 覆寫。
+    # 容器內部固定 3000。
+    ports:
+      - "127.0.0.1:${APP_PORT:-3400}:3000"
+    env_file:
+      - .env.production

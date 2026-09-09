@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.env
+.env.local
+.env.production
+npm-debug.log*
+*.tsbuildinfo
+README.md
+DEPLOY.md
+fitness-platform-spec.md
