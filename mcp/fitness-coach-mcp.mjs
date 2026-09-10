@@ -84,8 +84,8 @@ const TOOLS = [
   {
     name: "list_exercises",
     description:
-      "列出動作庫裡已經有的動作（名稱、分類、器材、預設 cue，以及預設的" +
-      "組數／次數／休息秒數）。" +
+      "列出動作庫裡已經有的動作（名稱、分類、器材、預設 cue、預設的" +
+      "組數／次數／休息秒數，以及示範影片網址）。" +
       "開新課表前先呼叫這個，盡量沿用既有名稱，讓同一個動作的歷史能串起來。",
     inputSchema: { type: "object", properties: {} },
   },
@@ -154,6 +154,14 @@ const TOOLS = [
               rest_seconds: {
                 type: "integer",
                 description: "預設組間休息秒數，不填為 60",
+              },
+              media_url: {
+                type: "string",
+                description:
+                  "示範影片網址（YouTube）。**只在使用者明確提供網址時才填**，" +
+                  "絕對不要自己編造或猜測影片 id —— 猜出來的多半是死連結或" +
+                  "不相干的影片，而健身動作看到錯的示範比沒有示範更糟。" +
+                  "留空時 app 會顯示一個搜尋按鈕讓使用者自己挑。",
               },
             },
           },

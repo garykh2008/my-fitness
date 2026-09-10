@@ -43,6 +43,7 @@ export async function GET(request: Request) {
         hold_seconds: e.default_hold_seconds,
         tempo: e.default_tempo,
         rest_seconds: e.default_rest_seconds,
+        media_url: e.media_url,
       })),
     });
   } catch (e) {
@@ -74,6 +75,7 @@ interface NewExerciseInput {
   hold_seconds?: unknown;
   tempo?: unknown;
   rest_seconds?: unknown;
+  media_url?: unknown;
 }
 
 export async function POST(request: Request) {
@@ -124,6 +126,11 @@ export async function POST(request: Request) {
         default_tempo: str(raw.tempo, `${where}.tempo`),
         default_rest_seconds:
           int(raw.rest_seconds, `${where}.rest_seconds`) ?? 60,
+
+        // 只有使用者明確給網址時才會有值。不去猜一支影片：
+        // 猜出來的多半是死連結或不相干的影片，而健身動作看到錯的示範
+        // 比沒有示範更糟。留空時 UI 會顯示搜尋按鈕。
+        media_url: str(raw.media_url, `${where}.media_url`),
       };
     });
 

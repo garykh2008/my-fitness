@@ -24,6 +24,7 @@ import { useWakeLock } from "./useWakeLock";
 import { unlockAudio } from "./timer-utils";
 import { useSoundSettings } from "./useSoundSettings";
 import SoundControls from "./SoundControls";
+import MediaPreview from "../../MediaPreview";
 import Wheel, { range } from "./Wheel";
 
 type LogMap = Record<string, ExerciseLogWithSets>;
@@ -444,7 +445,14 @@ export default function TrainingRunner({
               )}
             </div>
 
-            {cue && <p className="thesis cue">{cue}</p>}
+            {cue && <p className="cue">{cue}</p>}
+
+            {/* 收合狀態不發任何外部請求；點開才載縮圖，再點才載播放器 */}
+            <MediaPreview
+              mediaUrl={ce.exercise.media_url}
+              nameZh={ce.exercise.name_zh}
+              nameEn={ce.exercise.name_en}
+            />
 
             {prev && (
               <div className="prev-line">

@@ -4,6 +4,7 @@ import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createExercise, updateExercise, deleteExercise } from "./actions";
 import { CATEGORIES, categoryLabel } from "@/lib/types";
+import MediaPreview from "../MediaPreview";
 import type { Exercise } from "@/lib/types";
 
 function SaveButton({ label }: { label: string }) {
@@ -148,6 +149,20 @@ function ExerciseFields({ ex }: { ex?: Exercise }) {
             defaultValue={ex?.default_tempo ?? ""}
           />
         </div>
+      </div>
+
+      <div className="field">
+        <label>
+          示範影片網址
+          <span className="dim-hint"> · YouTube 連結，留空會顯示搜尋按鈕</span>
+        </label>
+        <input
+          name="media_url"
+          type="url"
+          inputMode="url"
+          placeholder="https://youtu.be/…"
+          defaultValue={ex?.media_url ?? ""}
+        />
       </div>
 
       <div className="field">
@@ -330,6 +345,13 @@ export default function ExerciseManager({ exercises }: { exercises: Exercise[] }
                     )}
                   </div>
                   {ex.default_cue && <p className="thesis">{ex.default_cue}</p>}
+
+                  <MediaPreview
+                    mediaUrl={ex.media_url}
+                    nameZh={ex.name_zh}
+                    nameEn={ex.name_en}
+                    expandedByDefault={Boolean(ex.media_url)}
+                  />
                 </div>
 
                 <div className="ex-actions">

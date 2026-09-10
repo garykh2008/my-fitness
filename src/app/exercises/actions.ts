@@ -30,6 +30,7 @@ function defaultsFrom(formData: FormData) {
       mode === "hold" ? int(formData, "default_hold_seconds") : null,
     default_tempo: text(formData, "default_tempo"),
     default_rest_seconds: int(formData, "default_rest_seconds"),
+    media_url: text(formData, "media_url"),
   };
 }
 

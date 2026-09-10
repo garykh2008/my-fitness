@@ -23,6 +23,11 @@ export interface Exercise {
   default_hold_seconds: number | null;
   default_tempo: string | null;
   default_rest_seconds: number | null;
+
+  // 示意媒體。顯示優先序：media_path（自存，Phase 2）> media_url（外部連結）
+  media_url: string | null;
+  media_path: string | null;
+  media_type: "image" | "video" | null;
 }
 
 /** 動作分類。順序就是動作庫裡的顯示順序。 */
