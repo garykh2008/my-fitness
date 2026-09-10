@@ -24,6 +24,7 @@ import { useWakeLock } from "./useWakeLock";
 import { unlockAudio } from "./timer-utils";
 import { useSoundSettings } from "./useSoundSettings";
 import SoundControls from "./SoundControls";
+import Wheel, { range } from "./Wheel";
 
 type LogMap = Record<string, ExerciseLogWithSets>;
 type PrevMap = Record<string, PreviousPerformance>;
@@ -78,6 +79,13 @@ function describePrevious(
 
 // --- 單組的輸入區 -----------------------------------------------
 
+// 滾輪的可選範圍。以在家啞鈴訓練為準：重量 0–120kg，0.5 為一階。
+// 秒數用 1 為一階而不是 5，因為 hold 計時器提早停下時會記下精確秒數
+// （例如撐了 37 秒），回頭編輯時滾輪要找得到那個值。
+const WEIGHT_VALUES = range(0, 120, 0.5);
+const REPS_VALUES = range(0, 60, 1);
+const HOLD_VALUES = range(0, 300, 1);
+
 function SetEditor({
   ce,
   setIndex,
@@ -100,22 +108,17 @@ function SetEditor({
   onCancel: () => void;
 }) {
   const src = prefill?.source;
-  const [weight, setWeight] = useState(
-    src?.weight_kg != null ? String(src.weight_kg) : ""
+
+  const [weight, setWeight] = useState<number>(src?.weight_kg ?? 0);
+  const [reps, setReps] = useState<number>(
+    src?.reps_done ?? ce.target_reps_min ?? 10
   );
-  const [reps, setReps] = useState(
-    src?.reps_done != null ? String(src.reps_done) : ""
-  );
-  const [hold, setHold] = useState(
-    src?.hold_seconds_done != null
-      ? String(src.hold_seconds_done)
-      : ce.target_hold_seconds != null
-        ? String(ce.target_hold_seconds)
-        : ""
+  const [hold, setHold] = useState<number>(
+    src?.hold_seconds_done ?? ce.target_hold_seconds ?? 30
   );
 
   const hint =
-    prefill && !prefill.isRecord ? "已帶入參考值，改成實際做的即可" : null;
+    prefill && !prefill.isRecord ? "已帶入參考值，滾一下改成實際做的" : null;
 
   if (ce.mode === "hold") {
     return (
@@ -131,22 +134,21 @@ function SetEditor({
           }
         />
 
-        <div className="manual-row">
-          <div className="field">
-            <label>或直接輸入秒數</label>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
+        <div className="manual-block">
+          <div className="manual-caption">或直接選秒數</div>
+          <div className="wheels">
+            <Wheel
+              label="秒數"
+              values={HOLD_VALUES}
               value={hold}
-              onChange={(e) => setHold(e.target.value)}
+              onChange={setHold}
             />
           </div>
           <button
-            className="btn small"
+            className="btn"
             type="button"
             disabled={saving}
-            onClick={() => onSave({ hold_seconds_done: hold })}
+            onClick={() => onSave({ hold_seconds_done: String(hold) })}
           >
             {saving ? "儲存中…" : "記錄"}
           </button>
@@ -164,31 +166,20 @@ function SetEditor({
       <div className="set-no">第 {setIndex} 組</div>
       {hint && <div className="prefill-hint">{hint}</div>}
 
-      <div className="two-col">
-        <div className="field">
-          <label>重量 (kg)</label>
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.5"
-            min={0}
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-            onFocus={(e) => e.target.select()}
-            autoFocus
-          />
-        </div>
-        <div className="field">
-          <label>次數</label>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            value={reps}
-            onChange={(e) => setReps(e.target.value)}
-            onFocus={(e) => e.target.select()}
-          />
-        </div>
+      <div className="wheels">
+        <Wheel
+          label="重量"
+          unit="kg"
+          values={WEIGHT_VALUES}
+          value={weight}
+          onChange={setWeight}
+        />
+        <Wheel
+          label="次數"
+          values={REPS_VALUES}
+          value={reps}
+          onChange={setReps}
+        />
       </div>
 
       <div className="editor-actions">
@@ -196,7 +187,9 @@ function SetEditor({
           className="btn primary"
           type="button"
           disabled={saving}
-          onClick={() => onSave({ weight_kg: weight, reps_done: reps })}
+          onClick={() =>
+            onSave({ weight_kg: String(weight), reps_done: String(reps) })
+          }
         >
           {saving ? "儲存中…" : "完成這組"}
         </button>

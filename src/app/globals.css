@@ -661,3 +661,127 @@ a {
   line-height: 1.6;
   margin-top: 2px;
 }
+
+/* --- 滾輪選擇器 --- */
+.wheels {
+  display: flex;
+  gap: 10px;
+  margin: 4px 0 14px;
+}
+
+.wheel-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.wheel-label {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.wheel-unit {
+  font-size: 12px;
+}
+
+.wheel-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wheel-nudge {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.wheel-nudge:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.wheel-viewport {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+/* 正中間那格的選取框，純視覺 */
+.wheel-selection {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  border-top: 1px solid var(--accent-dim);
+  border-bottom: 1px solid var(--accent-dim);
+  background: #0e2415;
+  pointer-events: none;
+}
+
+.wheel-scroll {
+  height: 100%;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  /* 捲到底不要把整個頁面一起帶著跑 */
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: none;
+  position: relative;
+  z-index: 1;
+}
+
+.wheel-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.wheel-scroll:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.wheel-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  scroll-snap-align: center;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  /* 上下的值淡一點，視線自然落在中間 */
+  opacity: 0.45;
+  transition: opacity 0.12s, color 0.12s;
+  user-select: none;
+}
+
+.wheel-item.on {
+  color: var(--text);
+  opacity: 1;
+  font-size: 19px;
+  font-weight: 600;
+}
+
+/* --- hold 型的手動輸入區 --- */
+.manual-block {
+  margin-top: 14px;
+}
+
+.manual-caption {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 2px;
+}
