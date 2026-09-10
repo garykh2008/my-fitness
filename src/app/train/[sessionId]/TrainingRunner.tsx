@@ -20,6 +20,7 @@ import type { PreviousPerformance } from "@/lib/queries";
 import RestTimer from "./RestTimer";
 import HoldTimer from "./HoldTimer";
 import { useWakeLock } from "./useWakeLock";
+import { unlockAudio } from "./timer-utils";
 
 type LogMap = Record<string, ExerciseLogWithSets>;
 type PrevMap = Record<string, PreviousPerformance>;
@@ -309,6 +310,10 @@ export default function TrainingRunner({
     setIndex: number,
     values: Record<string, string | undefined>
   ) => {
+    // 這裡還在使用者的點擊手勢裡，趁機把 AudioContext 解鎖：
+    // 等休息倒數跑到 0 才建立的話，iOS 會直接把聲音擋掉。
+    unlockAudio();
+
     const fd = new FormData();
     fd.set("session_id", session.id);
     fd.set("card_exercise_id", ce.id);

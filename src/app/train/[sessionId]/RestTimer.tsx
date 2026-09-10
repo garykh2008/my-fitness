@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { formatSeconds, notifyDone, remainingFrom } from "./timer-utils";
+import {
+  formatSeconds,
+  notifyDone,
+  playTick,
+  remainingFrom,
+  shouldTick,
+  unlockAudio,
+} from "./timer-utils";
 
 // 組間休息倒數。完成一組後自動跳出來。
 //
@@ -18,11 +25,20 @@ export default function RestTimer({
   const [endsAt, setEndsAt] = useState(() => Date.now() + seconds * 1000);
   const [left, setLeft] = useState(seconds);
   const firedRef = useRef(false);
+  const lastTickRef = useRef<number | null>(null);
 
   useEffect(() => {
     const tick = () => {
       const r = remainingFrom(endsAt);
       setLeft(r);
+
+      // 最後 3 秒每秒一聲短音，讓人知道要準備下一組了
+      const t = shouldTick(r, lastTickRef.current);
+      if (t !== null) {
+        lastTickRef.current = t;
+        playTick();
+      }
+
       if (r <= 0 && !firedRef.current) {
         firedRef.current = true;
         notifyDone();
@@ -46,7 +62,9 @@ export default function RestTimer({
   const pct = Math.min(100, Math.max(0, (1 - left / seconds) * 100));
 
   const extend = (extra: number) => {
+    unlockAudio();
     firedRef.current = false;
+    lastTickRef.current = null;
     setEndsAt((prev) => Math.max(prev, Date.now()) + extra * 1000);
   };
 

@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { formatSeconds, notifyDone, remainingFrom } from "./timer-utils";
+import {
+  formatSeconds,
+  notifyDone,
+  playTick,
+  remainingFrom,
+  shouldTick,
+  unlockAudio,
+} from "./timer-utils";
 
 // 持續秒數型動作（等長收縮）的計時器。
 //
@@ -23,6 +30,7 @@ export default function HoldTimer({
   const [endsAt, setEndsAt] = useState(0);
   const [left, setLeft] = useState(targetSeconds);
   const firedRef = useRef(false);
+  const lastTickRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (phase !== "running") return;
@@ -30,6 +38,14 @@ export default function HoldTimer({
     const tick = () => {
       const r = remainingFrom(endsAt);
       setLeft(r);
+
+      // 最後 3 秒報數，撐著的時候看不到螢幕也知道快結束了
+      const t = shouldTick(r, lastTickRef.current);
+      if (t !== null) {
+        lastTickRef.current = t;
+        playTick();
+      }
+
       if (r <= 0 && !firedRef.current) {
         firedRef.current = true;
         notifyDone();
@@ -52,7 +68,10 @@ export default function HoldTimer({
   }, [phase, endsAt, targetSeconds, onComplete]);
 
   const start = () => {
+    // 在使用者手勢中解鎖音訊，否則 iOS 倒數到 0 時不會有聲音
+    unlockAudio();
     firedRef.current = false;
+    lastTickRef.current = null;
     setEndsAt(Date.now() + targetSeconds * 1000);
     setLeft(targetSeconds);
     setPhase("running");
