@@ -764,15 +764,32 @@ a {
 
 /* --- 音效設定 ----------------------------------------------- */
 
+/* 跟滾輪的 −／＋ 同一個造型：34px 圓鈕、描邊、圖示用 currentColor */
 .sound-btn {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--pill);
-  padding: 6px 11px;
-  font-size: 15px;
-  line-height: 1;
+  border-radius: 50%;
+  color: var(--text-muted);
   cursor: pointer;
   font-family: inherit;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.sound-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* 靜音時圖示本身就已經是打叉，不用再靠顏色強調 */
+.sound-btn[aria-expanded="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .sound-panel {

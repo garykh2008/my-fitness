@@ -1,6 +1,7 @@
 "use client";
 
 import { playTick, unlockAudio } from "./timer-utils";
+import SoundIcon from "./SoundIcon";
 import type { SoundSettings, TickFrom } from "./useSoundSettings";
 
 const TICK_OPTIONS: TickFrom[] = [3, 5, 10];
@@ -40,9 +41,10 @@ export default function SoundControls({
         className="sound-btn"
         onClick={onToggleOpen}
         aria-expanded={open}
+        aria-label={settings.muted ? "音效設定（目前靜音）" : "音效設定"}
         title="音效設定"
       >
-        {settings.muted ? "🔇" : "🔊"}
+        <SoundIcon muted={settings.muted} />
       </button>
 
       {open && (
