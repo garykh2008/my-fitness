@@ -15,9 +15,28 @@ Next.js 15（App Router）+ 自架 Supabase 的獨立 `fitness` schema，Docker 
 權限由 Supabase Auth + `fitness` schema 上的 RLS policy 決定。
 因此不需要 `service_role` 金鑰 —— 少一把萬能鑰匙在外面跑。
 
-資料變更走 Server Actions 而非 REST API：單人自用的情況下，
+網站本身的資料變更走 Server Actions 而非 REST API：單人自用的情況下，
 Server Actions 少一層樣板程式碼，也自動沿用同一套 cookie／RLS 權限。
-（規格書第 4 節的 REST 端點留到 Phase 2 「讓 Claude 直接讀取」時再補。）
+
+## AI 教練 API
+
+原始目的就是讓 AI 教練開課表，所以另外開了一組 `/api/coach/*`：
+
+| 端點 | 用途 |
+|---|---|
+| `GET /api/coach/exercises` | 動作庫清單，開課表前先看能沿用什麼 |
+| `GET /api/coach/history?limit=5&exercise=…` | 最近 N 次的重量／次數／感受，攤平成給語言模型讀的形狀 |
+| `POST /api/coach/cards` | **一次送出整張卡**，動作庫沒有的依名稱自動建立 |
+
+端點形狀刻意不照規格書第 4 節那樣拆成「先建動作、再建卡、再逐個加動作」——
+教練吐出來的是一整份菜單，拆成多次呼叫只會增加寫錯的機會。
+
+驗證用靜態 bearer token（`COACH_API_TOKEN`），未設定時整組回 503（fail closed）。
+教練是機器呼叫、沒有使用者 JWT，RLS 無從判斷擁有者，因此**只有這幾個端點**
+改用 `service_role` 寫入，並且每一筆都自己帶 owner 的 user_id。
+一般頁面／Server Action 仍走 `src/lib/supabase.ts` 那條受 RLS 保護的路徑。
+
+要讓 Claude 在對話中直接呼叫，見 [mcp/README.md](mcp/README.md)。
 
 ## 本機開發
 
@@ -60,8 +79,12 @@ src/
     cards/[id]/edit/      編輯卡片、增刪動作、調整順序
     train/[sessionId]/    訓練執行頁（MVP 核心）
     exercises/            動作庫 CRUD
+    api/coach/            AI 教練 API（bearer token + service_role）
+mcp/
+  fitness-coach-mcp.mjs   MCP server，讓 Claude 在對話中直接建卡／讀歷史
 supabase/
   schema.sql              fitness schema + 資料表 + RLS policy
+  seed-sample-card.sql    範例訓練卡（想看實際長相時用）
 ```
 
 ## 目前進度
