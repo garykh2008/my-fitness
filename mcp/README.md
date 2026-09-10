@@ -3,13 +3,14 @@
 讓 Claude 在對話中直接讀你的訓練歷史、開新的訓練卡。
 
 零依賴 —— 純 Node（≥ 18）跑一個檔案，不需要 `npm install`。
-它只是把 `/api/coach/*` 那三個端點包成 MCP 工具。
+它只是把 `/api/coach/*` 的端點包成 MCP 工具。
 
 ## 提供的工具
 
 | 工具 | 用途 |
 |---|---|
 | `list_exercises` | 看動作庫裡已經有什麼，開課表前先沿用既有名稱 |
+| `add_exercises` | 一次補一批動作進動作庫（不綁訓練卡），以中文名稱判重、重跑安全 |
 | `get_training_history` | 讀最近 N 次的重量／次數／感受筆記 |
 | `create_workout_card` | 一次送出整份菜單，建立一張新的訓練卡 |
 
@@ -67,7 +68,7 @@ claude mcp add --scope user fitness-coach --env FITNESS_API_URL=https://fitness.
 printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"probe","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | FITNESS_API_URL=https://fitness.garyhsieh-proj.com COACH_API_TOKEN=<TOKEN> node mcp/fitness-coach-mcp.mjs
 ```
 
-應該看到 `initialize` 的回應與三個工具的定義。
+應該看到 `initialize` 的回應與四個工具的定義。
 
 ## 典型用法
 
