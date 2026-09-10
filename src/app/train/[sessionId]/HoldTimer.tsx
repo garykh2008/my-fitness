@@ -9,6 +9,7 @@ import {
   shouldTick,
   unlockAudio,
 } from "./timer-utils";
+import type { SoundSettings } from "./useSoundSettings";
 
 // 持續秒數型動作（等長收縮）的計時器。
 //
@@ -21,10 +22,12 @@ export default function HoldTimer({
   targetSeconds,
   onComplete,
   busy,
+  sound,
 }: {
   targetSeconds: number;
   onComplete: (secondsDone: number) => void;
   busy?: boolean;
+  sound: SoundSettings;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [endsAt, setEndsAt] = useState(0);
@@ -39,16 +42,16 @@ export default function HoldTimer({
       const r = remainingFrom(endsAt);
       setLeft(r);
 
-      // 最後 3 秒報數，撐著的時候看不到螢幕也知道快結束了
-      const t = shouldTick(r, lastTickRef.current);
+      // 最後幾秒報數，撐著的時候看不到螢幕也知道快結束了
+      const t = shouldTick(r, lastTickRef.current, sound.tickFrom);
       if (t !== null) {
         lastTickRef.current = t;
-        playTick();
+        if (!sound.muted) playTick();
       }
 
       if (r <= 0 && !firedRef.current) {
         firedRef.current = true;
-        notifyDone();
+        notifyDone(sound.muted);
         setPhase("finished");
         onComplete(targetSeconds);
       }
@@ -65,7 +68,7 @@ export default function HoldTimer({
       clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [phase, endsAt, targetSeconds, onComplete]);
+  }, [phase, endsAt, targetSeconds, onComplete, sound.tickFrom, sound.muted]);
 
   const start = () => {
     // 在使用者手勢中解鎖音訊，否則 iOS 倒數到 0 時不會有聲音

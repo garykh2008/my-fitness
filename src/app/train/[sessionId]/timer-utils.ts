@@ -109,14 +109,21 @@ export function playDone() {
   ]);
 }
 
-/** 時間到的完整提示：聲音 + 震動 */
-export function notifyDone() {
-  playDone();
+function vibrateDone() {
   try {
     navigator.vibrate?.([200, 100, 200]);
   } catch {
     // 桌機瀏覽器沒有震動，忽略
   }
+}
+
+/**
+ * 時間到的提示。
+ * 靜音時仍然震動 —— 使用者要的是「不要出聲」，不是「不要提示我」。
+ */
+export function notifyDone(muted = false) {
+  if (!muted) playDone();
+  vibrateDone();
 }
 
 /**

@@ -17,10 +17,13 @@ import type {
   SetLog,
 } from "@/lib/types";
 import type { PreviousPerformance } from "@/lib/queries";
+import type { SoundSettings } from "./useSoundSettings";
 import RestTimer from "./RestTimer";
 import HoldTimer from "./HoldTimer";
 import { useWakeLock } from "./useWakeLock";
 import { unlockAudio } from "./timer-utils";
+import { useSoundSettings } from "./useSoundSettings";
+import SoundControls from "./SoundControls";
 
 type LogMap = Record<string, ExerciseLogWithSets>;
 type PrevMap = Record<string, PreviousPerformance>;
@@ -80,6 +83,7 @@ function SetEditor({
   setIndex,
   prefill,
   saving,
+  sound,
   onSave,
   onCancel,
 }: {
@@ -87,6 +91,7 @@ function SetEditor({
   setIndex: number;
   prefill: { source: SetLog; isRecord: boolean } | null;
   saving: boolean;
+  sound: SoundSettings;
   onSave: (values: {
     weight_kg?: string;
     reps_done?: string;
@@ -120,6 +125,7 @@ function SetEditor({
         <HoldTimer
           targetSeconds={ce.target_hold_seconds ?? 30}
           busy={saving}
+          sound={sound}
           onComplete={(secondsDone) =>
             onSave({ hold_seconds_done: String(secondsDone) })
           }
@@ -266,6 +272,9 @@ export default function TrainingRunner({
 }) {
   useWakeLock(true);
 
+  const [sound, setSound] = useSoundSettings();
+  const [soundPanelOpen, setSoundPanelOpen] = useState(false);
+
   const exercises = card.card_exercises;
 
   const doneCountOf = useCallback(
@@ -363,8 +372,16 @@ export default function TrainingRunner({
       <header className="progress-bar-wrap">
         <div className="progress-line">
           <div className="progress-title">{card.title}</div>
-          <div className="progress-stat">
-            {doneExercises}/{exercises.length} 動作 · {doneSets}/{totalSets} 組
+          <div className="progress-right">
+            <div className="progress-stat">
+              {doneExercises}/{exercises.length} 動作 · {doneSets}/{totalSets} 組
+            </div>
+            <SoundControls
+              settings={sound}
+              onChange={setSound}
+              open={soundPanelOpen}
+              onToggleOpen={() => setSoundPanelOpen((v) => !v)}
+            />
           </div>
         </div>
         <div className="progress-track">
@@ -455,6 +472,7 @@ export default function TrainingRunner({
                         setIndex={n}
                         prefill={prefillFor(n, done, prev)}
                         saving={saving}
+                        sound={sound}
                         onSave={(values) => handleSave(ce, i, n, values)}
                         onCancel={() => setOpenSet(null)}
                       />
@@ -575,7 +593,7 @@ export default function TrainingRunner({
       </form>
 
       {resting && (
-        <RestTimer seconds={resting.seconds} onDone={endRest} />
+        <RestTimer seconds={resting.seconds} onDone={endRest} sound={sound} />
       )}
     </main>
   );

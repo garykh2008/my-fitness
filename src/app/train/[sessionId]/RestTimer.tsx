@@ -9,6 +9,7 @@ import {
   shouldTick,
   unlockAudio,
 } from "./timer-utils";
+import type { SoundSettings } from "./useSoundSettings";
 
 // 組間休息倒數。完成一組後自動跳出來。
 //
@@ -18,9 +19,11 @@ import {
 export default function RestTimer({
   seconds,
   onDone,
+  sound,
 }: {
   seconds: number;
   onDone: () => void;
+  sound: SoundSettings;
 }) {
   const [endsAt, setEndsAt] = useState(() => Date.now() + seconds * 1000);
   const [left, setLeft] = useState(seconds);
@@ -32,16 +35,16 @@ export default function RestTimer({
       const r = remainingFrom(endsAt);
       setLeft(r);
 
-      // 最後 3 秒每秒一聲短音，讓人知道要準備下一組了
-      const t = shouldTick(r, lastTickRef.current);
+      // 最後幾秒每秒一聲短音，讓人知道要準備下一組了（秒數可在設定裡調）
+      const t = shouldTick(r, lastTickRef.current, sound.tickFrom);
       if (t !== null) {
         lastTickRef.current = t;
-        playTick();
+        if (!sound.muted) playTick();
       }
 
       if (r <= 0 && !firedRef.current) {
         firedRef.current = true;
-        notifyDone();
+        notifyDone(sound.muted);
       }
     };
 
@@ -56,7 +59,7 @@ export default function RestTimer({
       clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [endsAt]);
+  }, [endsAt, sound.tickFrom, sound.muted]);
 
   const done = left <= 0;
   const pct = Math.min(100, Math.max(0, (1 - left / seconds) * 100));
