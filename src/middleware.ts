@@ -60,6 +60,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // 靜態資源與 favicon 不用經過這裡
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
+  // 排除靜態資源，以及 /api/coach/*（教練 API 走 bearer token，
+  // 不能被這裡導向 /login —— 機器呼叫看不懂 307）
+  matcher: [
+    "/((?!api/coach|_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+  ],
 };
