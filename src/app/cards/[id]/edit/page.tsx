@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCardDetail, listExercises } from "@/lib/queries";
+import { getCardDetail, listExercises, getCardStats } from "@/lib/queries";
 import CardEditor from "./CardEditor";
 
 export const dynamic = "force-dynamic";
@@ -11,9 +11,10 @@ export default async function EditCardPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [card, exercises] = await Promise.all([
+  const [card, exercises, stats] = await Promise.all([
     getCardDetail(id),
     listExercises(),
+    getCardStats(id),
   ]);
   if (!card) notFound();
 
@@ -38,7 +39,7 @@ export default async function EditCardPage({
         </div>
       )}
 
-      <CardEditor card={card} exercises={exercises} />
+      <CardEditor card={card} exercises={exercises} stats={stats} />
     </main>
   );
 }

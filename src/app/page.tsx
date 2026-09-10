@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { signOut } from "./login/actions";
 import Nav from "./Nav";
+import ArchivedCards from "./ArchivedCards";
 import type { WorkoutCard } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -9,12 +10,16 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const supabase = await getSupabase();
 
-  const { data: cards, error } = await supabase
+  // 一次拿回來再分組，省一趟往返
+  const { data: all, error } = await supabase
     .from("workout_cards")
     .select("*")
-    .eq("status", "active")
+    .neq("status", "draft")
     .order("created_at", { ascending: false })
     .returns<WorkoutCard[]>();
+
+  const cards = all?.filter((c) => c.status === "active") ?? [];
+  const archived = all?.filter((c) => c.status === "archived") ?? [];
 
   return (
     <main className="shell">
@@ -38,7 +43,7 @@ export default async function HomePage() {
         </div>
       )}
 
-      {!error && (!cards || cards.length === 0) && (
+      {!error && cards.length === 0 && (
         <div className="empty">
           還沒有訓練卡。
           <br />
@@ -46,7 +51,7 @@ export default async function HomePage() {
         </div>
       )}
 
-      {cards?.map((card) => (
+      {cards.map((card) => (
         <Link key={card.id} href={`/cards/${card.id}`} className="card-link">
           <article className="card">
             <h2>{card.title}</h2>
@@ -63,6 +68,8 @@ export default async function HomePage() {
           ＋ 新增訓練卡
         </button>
       </Link>
+
+      <ArchivedCards cards={archived} />
     </main>
   );
 }

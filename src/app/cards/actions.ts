@@ -90,6 +90,39 @@ export async function archiveCard(formData: FormData): Promise<void> {
   redirect("/");
 }
 
+export async function unarchiveCard(formData: FormData): Promise<void> {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const supabase = await getSupabase();
+  await supabase
+    .from("workout_cards")
+    .update({ status: "active", updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  revalidatePath("/");
+}
+
+/**
+ * 真的把卡片刪掉。
+ *
+ * 注意：workout_sessions 對 workout_cards 是 on delete cascade，
+ * 所以這會一併帶走這張卡的所有訓練紀錄（session → exercise_log → set_log）。
+ * 想留紀錄就用 archiveCard()，那只是把它從列表隱藏起來。
+ *
+ * UI 端會先讓使用者看到會失去幾次紀錄再確認（見 CardEditor 的危險區）。
+ */
+export async function deleteCard(formData: FormData): Promise<void> {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const supabase = await getSupabase();
+  await supabase.from("workout_cards").delete().eq("id", id);
+
+  revalidatePath("/");
+  redirect("/");
+}
+
 // --- 卡片內的動作 -----------------------------------------------
 
 /**

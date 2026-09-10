@@ -152,6 +152,46 @@ export async function getPreviousPerformance(
   return out;
 }
 
+export interface CardStats {
+  sessionCount: number;
+  setCount: number;
+  lastPerformedAt: string | null;
+}
+
+/**
+ * 一張卡累積了多少訓練紀錄。
+ *
+ * 刪除卡片會連鎖刪掉 workout_sessions → exercise_logs → set_logs，
+ * 所以刪之前要先讓人看到會失去什麼。
+ */
+export async function getCardStats(cardId: string): Promise<CardStats> {
+  const supabase = await getSupabase();
+
+  const { data, error } = await supabase
+    .from("workout_sessions")
+    .select("performed_at, exercise_logs ( set_logs ( id ) )")
+    .eq("workout_card_id", cardId)
+    .order("performed_at", { ascending: false })
+    .returns<
+      { performed_at: string; exercise_logs: { set_logs: { id: string }[] }[] }[]
+    >();
+
+  if (error || !data) {
+    return { sessionCount: 0, setCount: 0, lastPerformedAt: null };
+  }
+
+  const setCount = data.reduce(
+    (n, s) => n + s.exercise_logs.reduce((m, l) => m + l.set_logs.length, 0),
+    0
+  );
+
+  return {
+    sessionCount: data.length,
+    setCount,
+    lastPerformedAt: data[0]?.performed_at ?? null,
+  };
+}
+
 /** 某張卡最近一次的訓練紀錄（用來在卡片頁顯示「上次練是什麼時候」） */
 export async function getLatestSession(
   cardId: string

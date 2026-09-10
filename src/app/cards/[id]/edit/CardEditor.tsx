@@ -8,15 +8,16 @@ import {
   updateCardExercise,
   removeCardExercise,
   moveCardExercise,
-  archiveCard,
 } from "../../actions";
 import ExercisePicker from "./ExercisePicker";
+import DangerZone from "./DangerZone";
 import { formatTarget } from "@/lib/types";
 import type {
   Exercise,
   WorkoutCardDetail,
   CardExerciseWithExercise,
 } from "@/lib/types";
+import type { CardStats } from "@/lib/queries";
 
 function SaveButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
@@ -153,9 +154,11 @@ function EditExerciseForm({
 export default function CardEditor({
   card,
   exercises,
+  stats,
 }: {
   card: WorkoutCardDetail;
   exercises: Exercise[];
+  stats: CardStats;
 }) {
   const [metaState, metaAction] = useActionState(updateCard, undefined);
   const [adding, setAdding] = useState(false);
@@ -285,12 +288,7 @@ export default function CardEditor({
         </button>
       </Link>
 
-      <form action={archiveCard} style={{ marginTop: 24 }}>
-        <input type="hidden" name="id" value={card.id} />
-        <button className="btn ghost" type="submit">
-          封存這張卡
-        </button>
-      </form>
+      <DangerZone cardId={card.id} stats={stats} />
     </>
   );
 }

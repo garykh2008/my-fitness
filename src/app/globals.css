@@ -979,3 +979,137 @@ a {
   font-size: 17px;
   flex: 0 0 auto;
 }
+
+/* =============================================================
+   卷軸
+   ============================================================= */
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* WebKit：細一點、圓角、不佔版面感 */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+  /* 用透明邊框把滑塊做細，滑鼠靠近時才顯得明顯 */
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a4150;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* 滾輪選擇器維持完全隱藏：它本身就是一個「捲動即選取」的控制項，
+   多一條卷軸只會讓人以為那是可以拖的東西 */
+.wheel-scroll {
+  scrollbar-width: none;
+}
+
+.wheel-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* =============================================================
+   封存與刪除
+   ============================================================= */
+
+.danger {
+  margin-top: 28px;
+}
+
+.danger-explain {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.9;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 13px;
+  margin-bottom: 12px;
+}
+
+.danger-explain strong {
+  color: var(--text);
+}
+
+.danger-explain em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+.danger-btn {
+  color: var(--danger);
+  margin-top: 8px;
+}
+
+.danger-confirm {
+  margin-top: 12px;
+}
+
+.btn.danger-solid {
+  width: 100%;
+  background: #3a1418;
+  border-color: var(--danger);
+  color: #fca5a5;
+}
+
+/* --- 首頁的封存區 --- */
+.archived {
+  margin-top: 28px;
+}
+
+.archived-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  padding: 11px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.archived-caret {
+  font-size: 11px;
+}
+
+.archived-hint {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  margin: 10px 2px;
+}
+
+.card.archived-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  opacity: 0.75;
+}
+
+.archived-main {
+  flex: 1;
+  min-width: 0;
+}
