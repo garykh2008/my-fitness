@@ -785,3 +785,197 @@ a {
   color: var(--text-dim);
   margin-bottom: 2px;
 }
+
+/* =============================================================
+   導覽、動作庫、動作選擇器
+   ============================================================= */
+
+.nav {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.nav-tab {
+  flex: 1;
+  text-align: center;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.nav-tab.on {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* --- 分類篩選 chip --- */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.chip-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-dim);
+  padding: 6px 13px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip-btn.on {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.search-field {
+  margin-bottom: 16px;
+}
+
+/* --- 動作庫分組 --- */
+.ex-group {
+  margin-bottom: 18px;
+}
+
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  margin: 0 0 8px 2px;
+  text-transform: uppercase;
+}
+
+.group-count {
+  font-weight: 400;
+  font-size: 12px;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+.card.ex-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ex-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ex-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.ex-defaults {
+  font-size: 13px;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.ex-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.subhead {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin: 18px 0 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+/* --- 動作選擇器（建卡時一鍵加入）--- */
+.card.picker {
+  padding-bottom: 8px;
+}
+
+.picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* 動作多的時候不要把整頁撐長，自己捲 */
+  max-height: 46vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0 -4px;
+  padding: 0 4px 8px;
+}
+
+.picker-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 11px 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.picker-item.used {
+  border-color: var(--accent-dim);
+}
+
+.picker-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.picker-name {
+  display: block;
+  font-size: 15px;
+}
+
+.picker-used {
+  margin-left: 8px;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.picker-sub {
+  display: block;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.picker-add {
+  color: var(--accent);
+  font-size: 17px;
+  flex: 0 0 auto;
+}

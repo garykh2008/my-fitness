@@ -47,15 +47,23 @@ const EXERCISE_ITEM_SCHEMA = {
       type: "string",
       enum: ["reps", "hold"],
       description:
-        "reps = 次數型；hold = 持續秒數型（等長收縮）。預設 reps。" +
-        "選 hold 時必須給 hold_seconds。",
+        "reps = 次數型；hold = 持續秒數型（等長收縮）。" +
+        "不填就沿用動作庫裡該動作的預設值（棒式之類的本來就是 hold，不用特別指定）。",
     },
-    sets: { type: "integer", description: "目標組數" },
-    reps_min: { type: "integer", description: "次數下限（mode=reps 時使用）" },
-    reps_max: { type: "integer", description: "次數上限（mode=reps 時使用）" },
+    sets: { type: "integer", description: "目標組數。不填沿用動作庫預設。" },
+    reps_min: {
+      type: "integer",
+      description: "次數下限（mode=reps 時使用）。不填沿用動作庫預設。",
+    },
+    reps_max: {
+      type: "integer",
+      description: "次數上限（mode=reps 時使用）。不填沿用動作庫預設。",
+    },
     hold_seconds: {
       type: "integer",
-      description: "持續秒數（mode=hold 時必填）",
+      description:
+        "持續秒數（mode=hold 時使用）。不填沿用動作庫預設；" +
+        "動作庫裡也沒有時才必填。",
     },
     tempo: {
       type: "string",
@@ -65,7 +73,10 @@ const EXERCISE_ITEM_SCHEMA = {
       type: "string",
       description: "這張卡裡的提示語，會覆寫動作庫的預設 cue",
     },
-    rest_seconds: { type: "integer", description: "組間休息秒數" },
+    rest_seconds: {
+      type: "integer",
+      description: "組間休息秒數。不填沿用動作庫預設。",
+    },
   },
 };
 
@@ -73,7 +84,8 @@ const TOOLS = [
   {
     name: "list_exercises",
     description:
-      "列出動作庫裡已經有的動作（名稱、分類、器材、預設 cue）。" +
+      "列出動作庫裡已經有的動作（名稱、分類、器材、預設 cue，以及預設的" +
+      "組數／次數／休息秒數）。" +
       "開新課表前先呼叫這個，盡量沿用既有名稱，讓同一個動作的歷史能串起來。",
     inputSchema: { type: "object", properties: {} },
   },
@@ -81,7 +93,8 @@ const TOOLS = [
     name: "add_exercises",
     description:
       "一次補一批動作進動作庫（不綁訓練卡）。用在「幫我把動作庫補齊」這種場合 —— " +
-      "先鋪好動作跟預設 cue，之後開課表直接沿用名稱即可。" +
+      "先鋪好動作、預設 cue 與預設訓練參數（組數／次數／休息），" +
+      "之後開課表只要給動作名稱，細項會自動沿用這裡設的預設值。" +
       "以中文名稱判重，已經存在的會跳過而不是覆蓋，所以重跑同一份清單是安全的。",
     inputSchema: {
       type: "object",
@@ -119,6 +132,29 @@ const TOOLS = [
                 type: "string",
                 description: "備註，例如適用情境、退階／進階版本、常見代償",
               },
+
+              mode: {
+                type: "string",
+                enum: ["reps", "hold"],
+                description:
+                  "預設類型。reps = 次數型（預設）；hold = 持續秒數型，" +
+                  "棒式、農夫走路、等長收縮這類要選 hold 並給 hold_seconds。",
+              },
+              sets: { type: "integer", description: "預設組數，不填為 3" },
+              reps_min: { type: "integer", description: "預設次數下限，不填為 10" },
+              reps_max: { type: "integer", description: "預設次數上限，不填為 15" },
+              hold_seconds: {
+                type: "integer",
+                description: "預設持續秒數（mode=hold 時必填）",
+              },
+              tempo: {
+                type: "string",
+                description: '預設節奏，例如 "下放3秒/上推1秒"。多數動作留空即可。',
+              },
+              rest_seconds: {
+                type: "integer",
+                description: "預設組間休息秒數，不填為 60",
+              },
             },
           },
         },
@@ -150,6 +186,9 @@ const TOOLS = [
     description:
       "建立一張新的訓練卡。一次送出整份菜單，動作的先後順序就是訓練邏輯" +
       "（例如預先疲勞要把孤立動作排在複合動作前面）。" +
+      "組數／次數／休息這些細項不填就會沿用動作庫裡的預設值，" +
+      "所以多數情況只要給動作名稱和順序即可；只有這張卡想刻意跟平常練不一樣" +
+      "（例如今天走大重量低次數）才需要覆寫。" +
       "動作庫裡沒有的動作會依名稱自動建立。",
     inputSchema: {
       type: "object",

@@ -1,5 +1,5 @@
 import { assertCoachAuthorized, errorResponse } from "@/lib/coach-auth";
-import { BadRequest, str } from "@/lib/coach-input";
+import { BadRequest, int, str } from "@/lib/coach-input";
 import { getAdminSupabase, ownerUserId } from "@/lib/supabase-admin";
 import type { Exercise } from "@/lib/types";
 
@@ -35,6 +35,14 @@ export async function GET(request: Request) {
         category: e.category,
         equipment: e.default_equipment,
         default_cue: e.default_cue,
+        // 預設訓練參數：開課表時不指定就會套用這組
+        mode: e.default_mode,
+        sets: e.default_sets,
+        reps_min: e.default_reps_min,
+        reps_max: e.default_reps_max,
+        hold_seconds: e.default_hold_seconds,
+        tempo: e.default_tempo,
+        rest_seconds: e.default_rest_seconds,
       })),
     });
   } catch (e) {
@@ -58,6 +66,14 @@ interface NewExerciseInput {
   equipment?: unknown;
   default_cue?: unknown;
   notes?: unknown;
+  // 預設訓練參數
+  mode?: unknown;
+  sets?: unknown;
+  reps_min?: unknown;
+  reps_max?: unknown;
+  hold_seconds?: unknown;
+  tempo?: unknown;
+  rest_seconds?: unknown;
 }
 
 export async function POST(request: Request) {
@@ -78,6 +94,16 @@ export async function POST(request: Request) {
     // 全部驗完才動手寫，避免寫到一半才發現第 20 筆有問題
     const items = (body.exercises as NewExerciseInput[]).map((raw, i) => {
       const where = `exercises[${i}]`;
+      const mode = str(raw.mode, `${where}.mode`) ?? "reps";
+      if (mode !== "reps" && mode !== "hold") {
+        throw new BadRequest(`${where}.mode 必須是 reps 或 hold`);
+      }
+
+      const holdSeconds = int(raw.hold_seconds, `${where}.hold_seconds`);
+      if (mode === "hold" && holdSeconds === null) {
+        throw new BadRequest(`${where} 是 hold 型，必須提供 hold_seconds`);
+      }
+
       return {
         name_zh: str(raw.name_zh, `${where}.name_zh`, true)!,
         name_en: str(raw.name_en, `${where}.name_en`),
@@ -85,6 +111,19 @@ export async function POST(request: Request) {
         default_equipment: str(raw.equipment, `${where}.equipment`),
         default_cue: str(raw.default_cue, `${where}.default_cue`),
         notes: str(raw.notes, `${where}.notes`),
+
+        // 預設訓練參數。mode 與目標欄位要對得起來，
+        // 否則會撞上 exercises_default_targets_check。
+        default_mode: mode,
+        default_sets: int(raw.sets, `${where}.sets`) ?? 3,
+        default_reps_min:
+          mode === "reps" ? (int(raw.reps_min, `${where}.reps_min`) ?? 10) : null,
+        default_reps_max:
+          mode === "reps" ? (int(raw.reps_max, `${where}.reps_max`) ?? 15) : null,
+        default_hold_seconds: mode === "hold" ? holdSeconds : null,
+        default_tempo: str(raw.tempo, `${where}.tempo`),
+        default_rest_seconds:
+          int(raw.rest_seconds, `${where}.rest_seconds`) ?? 60,
       };
     });
 

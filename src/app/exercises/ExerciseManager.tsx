@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createExercise, updateExercise, deleteExercise } from "./actions";
+import { CATEGORIES, categoryLabel } from "@/lib/types";
 import type { Exercise } from "@/lib/types";
 
 function SaveButton({ label }: { label: string }) {
@@ -14,7 +15,22 @@ function SaveButton({ label }: { label: string }) {
   );
 }
 
+/** 動作的預設訓練參數，寫成一行給列表用 */
+function defaultsLine(ex: Exercise): string {
+  const sets = ex.default_sets ?? 3;
+  const target =
+    ex.default_mode === "hold"
+      ? `${ex.default_hold_seconds ?? 30} 秒`
+      : ex.default_reps_min && ex.default_reps_max
+        ? `${ex.default_reps_min}–${ex.default_reps_max} 下`
+        : "自訂";
+  const rest = ex.default_rest_seconds != null ? ` · 休息 ${ex.default_rest_seconds}s` : "";
+  return `${sets} 組 × ${target}${rest}`;
+}
+
 function ExerciseFields({ ex }: { ex?: Exercise }) {
+  const [mode, setMode] = useState<"reps" | "hold">(ex?.default_mode ?? "reps");
+
   return (
     <>
       <div className="field">
@@ -25,18 +41,115 @@ function ExerciseFields({ ex }: { ex?: Exercise }) {
         <label>英文名稱（選填）</label>
         <input name="name_en" defaultValue={ex?.name_en ?? ""} />
       </div>
-      <div className="field">
-        <label>分類（例：chest / back / legs / core）</label>
-        <input name="category" defaultValue={ex?.category ?? ""} />
+
+      <div className="two-col">
+        <div className="field">
+          <label>分類</label>
+          <select name="category" defaultValue={ex?.category ?? ""}>
+            <option value="">未分類</option>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {categoryLabel(c)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label>預設器材</label>
+          <input
+            name="default_equipment"
+            placeholder="啞鈴 / 徒手 …"
+            defaultValue={ex?.default_equipment ?? ""}
+          />
+        </div>
       </div>
-      <div className="field">
-        <label>預設器材（例：啞鈴 / 瑜珈墊 / 徒手）</label>
-        <input name="default_equipment" defaultValue={ex?.default_equipment ?? ""} />
-      </div>
+
       <div className="field">
         <label>預設提示語 cue</label>
         <textarea name="default_cue" rows={2} defaultValue={ex?.default_cue ?? ""} />
       </div>
+
+      <div className="subhead">
+        預設訓練參數
+        <span className="dim-hint"> · 加進訓練卡時直接套用</span>
+      </div>
+
+      <div className="two-col">
+        <div className="field">
+          <label>類型</label>
+          <select
+            name="default_mode"
+            value={mode}
+            onChange={(e) => setMode(e.target.value as "reps" | "hold")}
+          >
+            <option value="reps">次數型</option>
+            <option value="hold">持續秒數型</option>
+          </select>
+        </div>
+        <div className="field">
+          <label>組數</label>
+          <input
+            name="default_sets"
+            type="number"
+            min={1}
+            defaultValue={ex?.default_sets ?? 3}
+          />
+        </div>
+      </div>
+
+      {mode === "reps" ? (
+        <div className="two-col">
+          <div className="field">
+            <label>次數下限</label>
+            <input
+              name="default_reps_min"
+              type="number"
+              min={1}
+              defaultValue={ex?.default_reps_min ?? 10}
+            />
+          </div>
+          <div className="field">
+            <label>次數上限</label>
+            <input
+              name="default_reps_max"
+              type="number"
+              min={1}
+              defaultValue={ex?.default_reps_max ?? 15}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="field">
+          <label>持續秒數</label>
+          <input
+            name="default_hold_seconds"
+            type="number"
+            min={1}
+            defaultValue={ex?.default_hold_seconds ?? 30}
+          />
+        </div>
+      )}
+
+      <div className="two-col">
+        <div className="field">
+          <label>組間休息（秒）</label>
+          <input
+            name="default_rest_seconds"
+            type="number"
+            min={0}
+            defaultValue={ex?.default_rest_seconds ?? 60}
+          />
+        </div>
+        <div className="field">
+          <label>預設節奏</label>
+          <input
+            name="default_tempo"
+            placeholder="下放3秒/上推1秒"
+            defaultValue={ex?.default_tempo ?? ""}
+          />
+        </div>
+      </div>
+
       <div className="field">
         <label>備註</label>
         <textarea name="notes" rows={2} defaultValue={ex?.notes ?? ""} />
@@ -69,52 +182,85 @@ function EditForm({ ex, onDone }: { ex: Exercise; onDone: () => void }) {
 export default function ExerciseManager({ exercises }: { exercises: Exercise[] }) {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
   const [state, createAction] = useActionState(createExercise, undefined);
+
+  const counts = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const ex of exercises) {
+      const k = ex.category ?? "";
+      m[k] = (m[k] ?? 0) + 1;
+    }
+    return m;
+  }, [exercises]);
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return exercises.filter((ex) => {
+      if (filter !== null && (ex.category ?? "") !== filter) return false;
+      if (!q) return true;
+      return (
+        ex.name_zh.toLowerCase().includes(q) ||
+        (ex.name_en ?? "").toLowerCase().includes(q) ||
+        (ex.default_equipment ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [exercises, filter, query]);
+
+  // 沒有指定分類時依分類分組顯示，比一長串平列好找
+  const groups = useMemo(() => {
+    const known = CATEGORIES.filter((c) => visible.some((e) => e.category === c));
+    const out: { key: string; items: Exercise[] }[] = known.map((c) => ({
+      key: c,
+      items: visible.filter((e) => e.category === c),
+    }));
+    const uncategorised = visible.filter(
+      (e) => !e.category || !CATEGORIES.includes(e.category as never)
+    );
+    if (uncategorised.length) out.push({ key: "", items: uncategorised });
+    return out;
+  }, [visible]);
 
   return (
     <>
-      {exercises.length === 0 && !adding && (
-        <div className="empty">
-          動作庫還是空的。
-          <br />
-          先把常做的動作建進來，訓練卡才有東西可以選。
-        </div>
-      )}
+      <div className="filter-bar">
+        <button
+          type="button"
+          className={`chip-btn${filter === null ? " on" : ""}`}
+          onClick={() => setFilter(null)}
+        >
+          全部 {exercises.length}
+        </button>
+        {CATEGORIES.filter((c) => counts[c]).map((c) => (
+          <button
+            key={c}
+            type="button"
+            className={`chip-btn${filter === c ? " on" : ""}`}
+            onClick={() => setFilter(filter === c ? null : c)}
+          >
+            {categoryLabel(c)} {counts[c]}
+          </button>
+        ))}
+        {counts[""] ? (
+          <button
+            type="button"
+            className={`chip-btn${filter === "" ? " on" : ""}`}
+            onClick={() => setFilter(filter === "" ? null : "")}
+          >
+            未分類 {counts[""]}
+          </button>
+        ) : null}
+      </div>
 
-      {exercises.map((ex) => (
-        <article className="card" key={ex.id}>
-          {editingId === ex.id ? (
-            <EditForm ex={ex} onDone={() => setEditingId(null)} />
-          ) : (
-            <>
-              <h2>{ex.name_zh}</h2>
-              {ex.name_en && <p className="thesis">{ex.name_en}</p>}
-              <div>
-                {ex.category && <span className="chip">{ex.category}</span>}
-                {ex.default_equipment && (
-                  <span className="chip">{ex.default_equipment}</span>
-                )}
-              </div>
-              {ex.default_cue && <p className="thesis">cue：{ex.default_cue}</p>}
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                <button
-                  className="btn ghost small"
-                  type="button"
-                  onClick={() => setEditingId(ex.id)}
-                >
-                  編輯
-                </button>
-                <form action={deleteExercise}>
-                  <input type="hidden" name="id" value={ex.id} />
-                  <button className="btn ghost small" type="submit">
-                    刪除
-                  </button>
-                </form>
-              </div>
-            </>
-          )}
-        </article>
-      ))}
+      <div className="field search-field">
+        <input
+          type="search"
+          placeholder="搜尋動作名稱或器材…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
 
       {adding ? (
         <article className="card">
@@ -137,10 +283,75 @@ export default function ExerciseManager({ exercises }: { exercises: Exercise[] }
           </form>
         </article>
       ) : (
-        <button className="btn" type="button" onClick={() => setAdding(true)}>
+        <button
+          className="btn"
+          type="button"
+          onClick={() => setAdding(true)}
+          style={{ marginBottom: 16 }}
+        >
           ＋ 新增動作
         </button>
       )}
+
+      {visible.length === 0 && (
+        <div className="empty">
+          {exercises.length === 0
+            ? "動作庫還是空的。"
+            : "沒有符合條件的動作。"}
+        </div>
+      )}
+
+      {groups.map((g) => (
+        <section key={g.key || "none"} className="ex-group">
+          <h2 className="group-head">
+            {categoryLabel(g.key || null)}
+            <span className="group-count">{g.items.length}</span>
+          </h2>
+
+          {g.items.map((ex) =>
+            editingId === ex.id ? (
+              <article className="card" key={ex.id}>
+                <EditForm ex={ex} onDone={() => setEditingId(null)} />
+              </article>
+            ) : (
+              <article className="card ex-row" key={ex.id}>
+                <div className="ex-main">
+                  <div className="ex-title">{ex.name_zh}</div>
+                  <div className="ex-defaults">{defaultsLine(ex)}</div>
+                  <div>
+                    {ex.default_equipment && (
+                      <span className="chip">{ex.default_equipment}</span>
+                    )}
+                    {ex.default_mode === "hold" && (
+                      <span className="chip mode">持續秒數</span>
+                    )}
+                    {ex.default_tempo && (
+                      <span className="chip tempo">{ex.default_tempo}</span>
+                    )}
+                  </div>
+                  {ex.default_cue && <p className="thesis">{ex.default_cue}</p>}
+                </div>
+
+                <div className="ex-actions">
+                  <button
+                    className="btn ghost small"
+                    type="button"
+                    onClick={() => setEditingId(ex.id)}
+                  >
+                    編輯
+                  </button>
+                  <form action={deleteExercise}>
+                    <input type="hidden" name="id" value={ex.id} />
+                    <button className="btn ghost small" type="submit">
+                      刪除
+                    </button>
+                  </form>
+                </div>
+              </article>
+            )
+          )}
+        </section>
+      ))}
     </>
   );
 }

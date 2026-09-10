@@ -60,12 +60,15 @@ export async function POST(request: Request) {
     }
 
     // --- 先把輸入整理乾淨，全部驗證過再開始寫入 ---
+    //
+    // mode 刻意保留 null（＝教練沒指定），等查到動作之後再用動作庫的
+    // default_mode 補。直接預設成 "reps" 會把棒式這種 hold 型動作弄錯。
     const items = (body.exercises as ExerciseInput[]).map((raw, i) => {
       const where = `exercises[${i}]`;
       const name = str(raw.name_zh, `${where}.name_zh`, true)!;
 
-      const modeRaw = str(raw.mode, `${where}.mode`) ?? "reps";
-      if (modeRaw !== "reps" && modeRaw !== "hold") {
+      const modeRaw = str(raw.mode, `${where}.mode`);
+      if (modeRaw !== null && modeRaw !== "reps" && modeRaw !== "hold") {
         throw new BadRequest(`${where}.mode 必須是 reps 或 hold`);
       }
 
@@ -76,24 +79,21 @@ export async function POST(request: Request) {
       if (repsMin !== null && repsMax !== null && repsMin > repsMax) {
         throw new BadRequest(`${where}.reps_min 不可大於 reps_max`);
       }
-      if (modeRaw === "hold" && holdSeconds === null) {
-        throw new BadRequest(`${where} 是 hold 型，必須提供 hold_seconds`);
-      }
 
       return {
         name,
         name_en: str(raw.name_en, `${where}.name_en`),
         category: str(raw.category, `${where}.category`),
         equipment: str(raw.equipment, `${where}.equipment`),
-        mode: modeRaw,
-        // DB 的 check constraint 要求 mode 與目標欄位對得起來，這裡先清乾淨
-        target_sets: int(raw.sets, `${where}.sets`),
-        target_reps_min: modeRaw === "reps" ? repsMin : null,
-        target_reps_max: modeRaw === "reps" ? repsMax : null,
-        target_hold_seconds: modeRaw === "hold" ? holdSeconds : null,
-        tempo_text: str(raw.tempo, `${where}.tempo`),
-        cue_text: str(raw.cue, `${where}.cue`),
-        rest_seconds: int(raw.rest_seconds, `${where}.rest_seconds`),
+        mode: modeRaw as "reps" | "hold" | null,
+        sets: int(raw.sets, `${where}.sets`),
+        repsMin,
+        repsMax,
+        holdSeconds,
+        tempo: str(raw.tempo, `${where}.tempo`),
+        cue: str(raw.cue, `${where}.cue`),
+        rest: int(raw.rest_seconds, `${where}.rest_seconds`),
+        where,
       };
     });
 
@@ -118,13 +118,22 @@ export async function POST(request: Request) {
     if (missing.length > 0) {
       const rows = missing.map((name) => {
         const it = items.find((x) => x.name === name)!;
+        const mode = it.mode ?? "reps";
         return {
           user_id: userId,
           name_zh: name,
           name_en: it.name_en,
           category: it.category,
           default_equipment: it.equipment,
-          default_cue: it.cue_text,
+          default_cue: it.cue,
+          // 新建的動作也要有預設值，下次開課表才不用再填一次
+          default_mode: mode,
+          default_sets: it.sets ?? 3,
+          default_reps_min: mode === "reps" ? (it.repsMin ?? 10) : null,
+          default_reps_max: mode === "reps" ? (it.repsMax ?? 15) : null,
+          default_hold_seconds: mode === "hold" ? (it.holdSeconds ?? 30) : null,
+          default_tempo: it.tempo,
+          default_rest_seconds: it.rest ?? 60,
         };
       });
 
@@ -158,21 +167,36 @@ export async function POST(request: Request) {
     if (cardErr || !card) throw new Error(`建立訓練卡失敗：${cardErr?.message}`);
 
     // --- 卡內動作（順序就是陣列順序）---
-    const { error: ceErr } = await supabase.from("card_exercises").insert(
-      items.map((it, i) => ({
+    // 教練沒指定的細項，用動作庫裡的預設值補 ——
+    // 這樣「只給動作名稱」也能開出一張參數完整的卡。
+    const rows = items.map((it, i) => {
+      const ex = byName.get(it.name)!;
+      const mode = it.mode ?? ex.default_mode ?? "reps";
+
+      if (mode === "hold" && (it.holdSeconds ?? ex.default_hold_seconds) == null) {
+        throw new BadRequest(`${it.where} 是 hold 型，必須提供 hold_seconds`);
+      }
+
+      return {
         workout_card_id: card.id,
-        exercise_id: byName.get(it.name)!.id,
+        exercise_id: ex.id,
         order_index: i,
-        mode: it.mode,
-        target_sets: it.target_sets,
-        target_reps_min: it.target_reps_min,
-        target_reps_max: it.target_reps_max,
-        target_hold_seconds: it.target_hold_seconds,
-        tempo_text: it.tempo_text,
-        cue_text: it.cue_text,
-        rest_seconds: it.rest_seconds,
-      }))
-    );
+        mode,
+        target_sets: it.sets ?? ex.default_sets ?? 3,
+        // mode 與目標欄位要對得起來，否則會踩到 DB 的 check constraint
+        target_reps_min:
+          mode === "reps" ? (it.repsMin ?? ex.default_reps_min ?? 10) : null,
+        target_reps_max:
+          mode === "reps" ? (it.repsMax ?? ex.default_reps_max ?? 15) : null,
+        target_hold_seconds:
+          mode === "hold" ? (it.holdSeconds ?? ex.default_hold_seconds ?? 30) : null,
+        tempo_text: it.tempo ?? ex.default_tempo,
+        cue_text: it.cue,
+        rest_seconds: it.rest ?? ex.default_rest_seconds ?? 60,
+      };
+    });
+
+    const { error: ceErr } = await supabase.from("card_exercises").insert(rows);
 
     if (ceErr) {
       // 不要留下一張空卡跟一堆孤兒動作

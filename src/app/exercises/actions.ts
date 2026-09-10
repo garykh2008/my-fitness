@@ -8,6 +8,31 @@ function text(formData: FormData, key: string): string | null {
   return v === "" ? null : v;
 }
 
+function int(formData: FormData, key: string): number | null {
+  const v = String(formData.get(key) ?? "").trim();
+  if (v === "") return null;
+  const n = Number.parseInt(v, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * 預設訓練參數。mode 與目標欄位必須對得起來，
+ * 否則會撞上 exercises_default_targets_check。
+ */
+function defaultsFrom(formData: FormData) {
+  const mode = String(formData.get("default_mode") ?? "reps") === "hold" ? "hold" : "reps";
+  return {
+    default_mode: mode,
+    default_sets: int(formData, "default_sets"),
+    default_reps_min: mode === "reps" ? int(formData, "default_reps_min") : null,
+    default_reps_max: mode === "reps" ? int(formData, "default_reps_max") : null,
+    default_hold_seconds:
+      mode === "hold" ? int(formData, "default_hold_seconds") : null,
+    default_tempo: text(formData, "default_tempo"),
+    default_rest_seconds: int(formData, "default_rest_seconds"),
+  };
+}
+
 export async function createExercise(
   _prev: { error?: string } | undefined,
   formData: FormData
@@ -27,6 +52,7 @@ export async function createExercise(
     default_equipment: text(formData, "default_equipment"),
     default_cue: text(formData, "default_cue"),
     notes: text(formData, "notes"),
+    ...defaultsFrom(formData),
   });
 
   if (error) return { error: `新增失敗：${error.message}` };
@@ -54,6 +80,7 @@ export async function updateExercise(
       default_equipment: text(formData, "default_equipment"),
       default_cue: text(formData, "default_cue"),
       notes: text(formData, "notes"),
+      ...defaultsFrom(formData),
     })
     .eq("id", id);
 

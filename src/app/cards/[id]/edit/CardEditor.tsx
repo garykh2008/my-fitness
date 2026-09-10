@@ -5,12 +5,12 @@ import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import {
   updateCard,
-  addCardExercise,
   updateCardExercise,
   removeCardExercise,
   moveCardExercise,
   archiveCard,
 } from "../../actions";
+import ExercisePicker from "./ExercisePicker";
 import { formatTarget } from "@/lib/types";
 import type {
   Exercise,
@@ -158,7 +158,6 @@ export default function CardEditor({
   exercises: Exercise[];
 }) {
   const [metaState, metaAction] = useActionState(updateCard, undefined);
-  const [addState, addAction] = useActionState(addCardExercise, undefined);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -261,44 +260,14 @@ export default function CardEditor({
         </article>
       ))}
 
-      {/* --- 加入動作 --- */}
+      {/* --- 加入動作：挑一個就好，細項套用動作庫的預設值 --- */}
       {adding ? (
-        <article className="card">
-          <form
-            action={async (fd) => {
-              await addAction(fd);
-              setAdding(false);
-            }}
-          >
-            {addState?.error && (
-              <div className="notice error">{addState.error}</div>
-            )}
-            <input type="hidden" name="workout_card_id" value={card.id} />
-            <div className="field">
-              <label>動作</label>
-              <select name="exercise_id" required defaultValue="">
-                <option value="" disabled>
-                  選一個動作…
-                </option>
-                {exercises.map((ex) => (
-                  <option key={ex.id} value={ex.id}>
-                    {ex.name_zh}
-                    {ex.category ? `（${ex.category}）` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <TargetFields />
-            <SaveButton label="加入這張卡" />
-            <button
-              className="btn ghost"
-              type="button"
-              onClick={() => setAdding(false)}
-            >
-              取消
-            </button>
-          </form>
-        </article>
+        <ExercisePicker
+          cardId={card.id}
+          exercises={exercises}
+          usedExerciseIds={card.card_exercises.map((ce) => ce.exercise_id)}
+          onClose={() => setAdding(false)}
+        />
       ) : (
         <button
           className="btn"

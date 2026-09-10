@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { listExercises } from "@/lib/queries";
 import ExerciseManager from "./ExerciseManager";
+import Nav from "../Nav";
 
 export const dynamic = "force-dynamic";
 
@@ -14,12 +14,9 @@ export default async function ExercisesPage() {
           <h1>動作庫</h1>
           <div className="sub">{exercises.length} 個動作</div>
         </div>
-        <Link href="/">
-          <button className="btn ghost small" type="button">
-            返回
-          </button>
-        </Link>
       </div>
+
+      <Nav />
 
       <ExerciseManager exercises={exercises} />
     </main>

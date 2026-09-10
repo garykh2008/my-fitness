@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSupabase, getCurrentUser } from "@/lib/supabase";
+import { cardExerciseDefaults } from "@/lib/types";
+import type { Exercise } from "@/lib/types";
 
 function text(formData: FormData, key: string): string | null {
   const v = String(formData.get(key) ?? "").trim();
@@ -89,6 +91,47 @@ export async function archiveCard(formData: FormData): Promise<void> {
 }
 
 // --- 卡片內的動作 -----------------------------------------------
+
+/**
+ * 一鍵把動作加進卡片：直接套用動作庫裡的預設訓練參數。
+ *
+ * 建卡的當下多半只想決定「練哪些、什麼順序」，組數次數之類的細項
+ * 動作庫裡已經有一組合理的值了，要調再進去改就好。
+ */
+export async function quickAddCardExercise(formData: FormData): Promise<void> {
+  const workout_card_id = String(formData.get("workout_card_id") ?? "");
+  const exercise_id = String(formData.get("exercise_id") ?? "");
+  if (!workout_card_id || !exercise_id) return;
+
+  const supabase = await getSupabase();
+
+  const { data: exercise } = await supabase
+    .from("exercises")
+    .select("*")
+    .eq("id", exercise_id)
+    .maybeSingle<Exercise>();
+
+  if (!exercise) return;
+
+  // 放到最後面
+  const { data: last } = await supabase
+    .from("card_exercises")
+    .select("order_index")
+    .eq("workout_card_id", workout_card_id)
+    .order("order_index", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ order_index: number }>();
+
+  await supabase.from("card_exercises").insert({
+    workout_card_id,
+    exercise_id,
+    order_index: (last?.order_index ?? -1) + 1,
+    ...cardExerciseDefaults(exercise),
+  });
+
+  revalidatePath(`/cards/${workout_card_id}`);
+  revalidatePath(`/cards/${workout_card_id}/edit`);
+}
 
 export async function addCardExercise(
   _prev: { error?: string } | undefined,

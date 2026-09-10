@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { signOut } from "./login/actions";
+import Nav from "./Nav";
 import type { WorkoutCard } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,8 @@ export default async function HomePage() {
           </button>
         </form>
       </div>
+
+      <Nav />
 
       {error && (
         <div className="notice error">

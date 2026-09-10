@@ -13,6 +13,60 @@ export interface Exercise {
   default_cue: string | null;
   notes: string | null;
   created_at: string;
+
+  // 預設訓練參數：加進訓練卡時直接複製過去，
+  // 所以建卡時只要挑動作，不用每次重填組數次數。
+  default_mode: ExerciseMode;
+  default_sets: number | null;
+  default_reps_min: number | null;
+  default_reps_max: number | null;
+  default_hold_seconds: number | null;
+  default_tempo: string | null;
+  default_rest_seconds: number | null;
+}
+
+/** 動作分類。順序就是動作庫裡的顯示順序。 */
+export const CATEGORIES = [
+  "chest",
+  "back",
+  "shoulders",
+  "arms",
+  "legs",
+  "core",
+] as const;
+
+export type Category = (typeof CATEGORIES)[number];
+
+export const CATEGORY_LABELS: Record<string, string> = {
+  chest: "胸",
+  back: "背",
+  shoulders: "肩",
+  arms: "手臂",
+  legs: "腿",
+  core: "核心",
+};
+
+export function categoryLabel(c: string | null): string {
+  if (!c) return "未分類";
+  return CATEGORY_LABELS[c] ?? c;
+}
+
+/**
+ * 把動作的預設值轉成 card_exercises 要寫入的欄位。
+ * mode 與目標欄位必須對得起來，否則會撞上 DB 的 check constraint。
+ */
+export function cardExerciseDefaults(ex: Exercise) {
+  const mode: ExerciseMode = ex.default_mode ?? "reps";
+  return {
+    mode,
+    target_sets: ex.default_sets ?? 3,
+    target_reps_min: mode === "reps" ? (ex.default_reps_min ?? 10) : null,
+    target_reps_max: mode === "reps" ? (ex.default_reps_max ?? 15) : null,
+    target_hold_seconds: mode === "hold" ? (ex.default_hold_seconds ?? 30) : null,
+    tempo_text: ex.default_tempo,
+    cue_text: null as string | null, // 沿用動作庫的 default_cue，不覆寫
+    rest_seconds: ex.default_rest_seconds ?? 60,
+  };
 }
 
 export interface WorkoutCard {
