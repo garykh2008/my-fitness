@@ -4,6 +4,7 @@ import type {
   WorkoutCardDetail,
   WorkoutSession,
   ExerciseLogWithSets,
+  SetLog,
 } from "./types";
 
 // 資料讀取集中在這裡。所有查詢都靠 RLS 自動限定在目前登入者的資料，
@@ -80,6 +81,75 @@ export async function getSessionDetail(
   }
 
   return { session, card, logs: map };
+}
+
+export interface PreviousPerformance {
+  performed_at: string;
+  card_title: string | null;
+  sets: SetLog[];
+  feel_note: string | null;
+}
+
+/**
+ * 每個動作「上次練成什麼樣」，用來在執行頁預填輸入框、顯示參考值。
+ *
+ * 刻意用 exercise_id 而不是 card_exercise_id 來對應：同一個動作可能同時
+ *出現在好幾張卡裡（啞鈴臥推在推日也在別張），對使用者來說「上次臥推用多重」
+ * 是同一件事，不該因為換了張卡就查不到。
+ */
+export async function getPreviousPerformance(
+  excludeSessionId: string
+): Promise<Record<string, PreviousPerformance>> {
+  const supabase = await getSupabase();
+
+  const { data, error } = await supabase
+    .from("workout_sessions")
+    .select(
+      `id, performed_at,
+       workout_cards ( title ),
+       exercise_logs (
+         feel_note,
+         card_exercises ( exercise_id ),
+         set_logs ( * )
+       )`
+    )
+    .neq("id", excludeSessionId)
+    .order("performed_at", { ascending: false })
+    .limit(20)
+    .returns<
+      {
+        performed_at: string;
+        workout_cards: { title: string } | null;
+        exercise_logs: {
+          feel_note: string | null;
+          card_exercises: { exercise_id: string } | null;
+          set_logs: SetLog[];
+        }[];
+      }[]
+    >();
+
+  // 預填只是輔助，查不到不該讓整個執行頁掛掉
+  if (error) return {};
+
+  const out: Record<string, PreviousPerformance> = {};
+
+  // sessions 已依時間新到舊排序，第一次遇到某個動作就是它最近的一次
+  for (const session of data ?? []) {
+    for (const log of session.exercise_logs) {
+      const exerciseId = log.card_exercises?.exercise_id;
+      if (!exerciseId || out[exerciseId]) continue;
+      if (log.set_logs.length === 0) continue;
+
+      out[exerciseId] = {
+        performed_at: session.performed_at,
+        card_title: session.workout_cards?.title ?? null,
+        sets: [...log.set_logs].sort((a, b) => a.set_index - b.set_index),
+        feel_note: log.feel_note,
+      };
+    }
+  }
+
+  return out;
 }
 
 /** 某張卡最近一次的訓練紀錄（用來在卡片頁顯示「上次練是什麼時候」） */

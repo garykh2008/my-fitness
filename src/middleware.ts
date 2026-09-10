@@ -60,9 +60,11 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // 排除靜態資源，以及 /api/coach/*（教練 API 走 bearer token，
-  // 不能被這裡導向 /login —— 機器呼叫看不懂 307）
+  // 排除的東西：
+  //  - /api/coach/*：走 bearer token，不能被導向 /login（機器呼叫看不懂 307）
+  //  - sw.js / manifest：PWA 要在未登入狀態下也拿得到，否則裝不起來
+  //  - 靜態資源
   matcher: [
-    "/((?!api/coach|_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!api/coach|sw\\.js|manifest\\.webmanifest|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
