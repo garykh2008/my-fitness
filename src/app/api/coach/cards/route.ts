@@ -1,4 +1,5 @@
 import { assertCoachAuthorized, errorResponse } from "@/lib/coach-auth";
+import { BadRequest, int, str } from "@/lib/coach-input";
 import { getAdminSupabase, ownerUserId } from "@/lib/supabase-admin";
 import type { Exercise } from "@/lib/types";
 
@@ -32,31 +33,6 @@ interface CardInput {
   source_note?: unknown;
   status?: unknown;
   exercises?: unknown;
-}
-
-class BadRequest extends Error {}
-
-function str(v: unknown, field: string, required = false): string | null {
-  if (v === undefined || v === null || v === "") {
-    if (required) throw new BadRequest(`缺少必填欄位 ${field}`);
-    return null;
-  }
-  if (typeof v !== "string") throw new BadRequest(`${field} 必須是字串`);
-  const t = v.trim();
-  if (t === "") {
-    if (required) throw new BadRequest(`${field} 不可為空白`);
-    return null;
-  }
-  return t;
-}
-
-function int(v: unknown, field: string): number | null {
-  if (v === undefined || v === null || v === "") return null;
-  const n = typeof v === "number" ? v : Number(v);
-  if (!Number.isFinite(n)) throw new BadRequest(`${field} 必須是數字`);
-  if (!Number.isInteger(n)) throw new BadRequest(`${field} 必須是整數`);
-  if (n < 0) throw new BadRequest(`${field} 不可為負數`);
-  return n;
 }
 
 export async function POST(request: Request) {

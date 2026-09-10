@@ -78,6 +78,54 @@ const TOOLS = [
     inputSchema: { type: "object", properties: {} },
   },
   {
+    name: "add_exercises",
+    description:
+      "一次補一批動作進動作庫（不綁訓練卡）。用在「幫我把動作庫補齊」這種場合 —— " +
+      "先鋪好動作跟預設 cue，之後開課表直接沿用名稱即可。" +
+      "以中文名稱判重，已經存在的會跳過而不是覆蓋，所以重跑同一份清單是安全的。",
+    inputSchema: {
+      type: "object",
+      required: ["exercises"],
+      properties: {
+        exercises: {
+          type: "array",
+          minItems: 1,
+          description: "要加入動作庫的動作清單",
+          items: {
+            type: "object",
+            required: ["name_zh"],
+            properties: {
+              name_zh: {
+                type: "string",
+                description:
+                  "動作的中文名稱，也是判重的依據。先用 list_exercises 看有什麼，" +
+                  "同一個動作不要取兩個名字。",
+              },
+              name_en: { type: "string", description: "英文名稱（選填）" },
+              category: {
+                type: "string",
+                description:
+                  "分類。沿用既有慣例：chest / back / shoulders / legs / core / arms",
+              },
+              equipment: {
+                type: "string",
+                description: "器材，例如 啞鈴 / 槓鈴 / 彈力帶 / 器械 / 徒手 / 瑜珈墊",
+              },
+              default_cue: {
+                type: "string",
+                description: "預設提示語。開課表沒另外指定 cue 時會用這句。",
+              },
+              notes: {
+                type: "string",
+                description: "備註，例如適用情境、退階／進階版本、常見代償",
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+  {
     name: "get_training_history",
     description:
       "讀最近幾次的實際訓練紀錄：每個動作用了多少重量、做了幾下（或撐幾秒）、" +
@@ -168,6 +216,9 @@ async function runTool(name, args = {}) {
   switch (name) {
     case "list_exercises":
       return await callApi("/api/coach/exercises");
+
+    case "add_exercises":
+      return await callApi("/api/coach/exercises", { method: "POST", body: args });
 
     case "get_training_history": {
       const params = new URLSearchParams();
