@@ -28,20 +28,20 @@ ssh root@vps.garyhsieh-proj.com "cat /root/coach-token.txt"
 
 ## 註冊到 Claude Code
 
-在互動式的 `claude` 終端機執行（把 `<TOKEN>` 換成上面拿到的值）：
+有裝 `claude` CLI 的話最快（把 `<TOKEN>` 換成上面拿到的值）：
 
 ```bash
-claude mcp add fitness-coach --env FITNESS_API_URL=https://fitness.garyhsieh-proj.com --env COACH_API_TOKEN=<TOKEN> -- node D:/code/my-fitness/mcp/fitness-coach-mcp.mjs
+claude mcp add --scope user fitness-coach --env FITNESS_API_URL=https://fitness.garyhsieh-proj.com --env COACH_API_TOKEN=<TOKEN> -- node D:/code/my-fitness/mcp/fitness-coach-mcp.mjs
 ```
 
-## 註冊到 Claude 桌面版
-
-編輯 `claude_desktop_config.json`，在 `mcpServers` 底下加入：
+**只用桌面版、沒有 CLI 的話**（這台機器就是這種情況），直接編輯 `~/.claude.json`，
+在最外層加一個 `mcpServers`（user scope，所有專案都吃得到）：
 
 ```json
 {
   "mcpServers": {
     "fitness-coach": {
+      "type": "stdio",
       "command": "node",
       "args": ["D:/code/my-fitness/mcp/fitness-coach-mcp.mjs"],
       "env": {
@@ -52,6 +52,12 @@ claude mcp add fitness-coach --env FITNESS_API_URL=https://fitness.garyhsieh-pro
   }
 }
 ```
+
+改完要開新的 session 才會載入。這個檔案很大而且是 app 在管的，動手前先備份。
+
+> 桌面版的**一般對話**（非 Code 分頁）讀的是另一個檔
+> （`%APPDATA%\Claude\claude_desktop_config.json`），新版是走 Settings 的
+> Connectors／Extensions UI 設定，不是直接編這個檔。
 
 ## 自己驗證有沒有通
 
