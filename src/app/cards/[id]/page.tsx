@@ -51,7 +51,8 @@ export default async function CardPage({
       {card.card_exercises.map((ce, i) => (
         <article className="card" key={ce.id}>
           <h2>
-            {i + 1}. {ce.exercise.name_zh}
+            <span className="ex-idx">{String(i + 1).padStart(2, "0")}</span>{" "}
+            {ce.exercise.name_zh}
           </h2>
           <div>
             <span className="chip mode">
@@ -64,7 +65,7 @@ export default async function CardPage({
             )}
           </div>
           {(ce.cue_text || ce.exercise.default_cue) && (
-            <p className="thesis" style={{ marginTop: 10 }}>
+            <p className="cue">
               {ce.cue_text || ce.exercise.default_cue}
             </p>
           )}

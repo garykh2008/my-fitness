@@ -207,7 +207,10 @@ export default function CardEditor({
           ) : (
             <>
               <h2>
-                {i + 1}. {ce.exercise.name_zh}
+                <span className="ex-idx">
+                  {String(i + 1).padStart(2, "0")}
+                </span>{" "}
+                {ce.exercise.name_zh}
               </h2>
               <div>
                 <span className="chip mode">

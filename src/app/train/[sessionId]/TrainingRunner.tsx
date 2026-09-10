@@ -408,7 +408,7 @@ export default function TrainingRunner({
                 setOpenSet(null);
               }}
             >
-              <span className="ex-idx">{i + 1}</span>
+              <span className="ex-idx">{String(i + 1).padStart(2, "0")}</span>
               <span className="ex-name">{ce.exercise.name_zh}</span>
               <span className="ex-count">
                 {done.length}/{target}
@@ -426,7 +426,10 @@ export default function TrainingRunner({
         return (
           <article className="card ex-open" key={ce.id}>
             <h2>
-              {i + 1}. {ce.exercise.name_zh}
+              <span className="ex-idx">
+                {String(i + 1).padStart(2, "0")}
+              </span>{" "}
+              {ce.exercise.name_zh}
             </h2>
 
             <div>

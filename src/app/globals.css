@@ -1,22 +1,81 @@
-/* 手機優先。延續訓練卡的視覺邏輯：深色底、編號、chip、大按鈕。 */
+/* =============================================================
+   設計語言沿用最初那張訓練卡 Artifact：
+   淺色紙感底、鼠尾草綠、襯線標題與數字、柔和陰影、大圓角。
+   淺色為主，深色是同一套語彙的反轉，不是另一套配色。
+   ============================================================= */
 
 :root {
-  --bg: #0f1115;
-  --surface: #171a21;
-  --surface-2: #1f232c;
-  --border: #2a2f3a;
-  --text: #e8eaed;
-  --text-dim: #9aa2ae;
-  --accent: #4ade80;
-  --accent-dim: #16341f;
-  --warn: #fbbf24;
-  --danger: #f87171;
-  --radius: 14px;
-  --radius-sm: 9px;
+  --bg: #eef0ea;
+  --surface: #ffffff;
+  --surface-sunken: #e4e7de;
+  --line: #d3d7c9;
+  --text: #1d211b;
+  --text-muted: #5b6355;
+  --text-faint: #8a9080;
+  --accent: #3f6b4a;
+  --accent-strong: #2c4d35;
+  --accent-tint: #dfe8de;
+  --on-accent: #ffffff;
+  --warn: #a8481f;
+  --danger: #a8481f;
+  --danger-tint: #f3e2d6;
+  --danger-on: #ffffff;
+  --shadow: 0 1px 2px rgba(29, 33, 27, 0.06),
+    0 8px 24px -12px rgba(29, 33, 27, 0.18);
+
+  --radius: 16px;
+  --radius-sm: 10px;
+  --pill: 999px;
+
+  --font-serif: "Noto Serif TC", Georgia, "Songti TC", serif;
+  --font-sans: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang TC", "Microsoft JhengHei", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14181a;
+    --surface: #1c211f;
+    --surface-sunken: #171b18;
+    --line: #333a33;
+    --text: #e9ece5;
+    --text-muted: #a2ab9a;
+    --text-faint: #6c7466;
+    --accent: #7bab86;
+    --accent-strong: #a3c9ac;
+    --accent-tint: #223229;
+    --on-accent: #10231a;
+    --warn: #dd8a5f;
+    --danger: #e08b7a;
+    --danger-tint: #2f2220;
+    --danger-on: #221512;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #14181a;
+  --surface: #1c211f;
+  --surface-sunken: #171b18;
+  --line: #333a33;
+  --text: #e9ece5;
+  --text-muted: #a2ab9a;
+  --text-faint: #6c7466;
+  --accent: #7bab86;
+  --accent-strong: #a3c9ac;
+  --accent-tint: #223229;
+  --on-accent: #10231a;
+  --warn: #dd8a5f;
+  --danger: #e08b7a;
+  --danger-tint: #2f2220;
+  --danger-on: #221512;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
 }
 
 * {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
 
 html,
@@ -25,13 +84,12 @@ body {
   padding: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC",
-    "PingFang TC", "Microsoft JhengHei", sans-serif;
+  font-family: var(--font-sans);
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
 body {
-  /* 手機底部安全區 */
   padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -43,96 +101,166 @@ a {
 .shell {
   max-width: 640px;
   margin: 0 auto;
-  padding: 20px 16px 64px;
+  padding: 28px 20px 64px;
 }
 
-/* --- 標題列 --- */
+/* --- 標題列 ------------------------------------------------- */
+
 .topbar {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
   margin-bottom: 20px;
 }
 
 .topbar h1 {
-  font-size: 22px;
-  margin: 0;
-  letter-spacing: 0.5px;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: clamp(26px, 6.5vw, 33px);
+  letter-spacing: 0.01em;
+  margin: 2px 0 6px;
+  text-wrap: balance;
 }
 
 .topbar .sub {
-  color: var(--text-dim);
-  font-size: 13px;
+  font-size: 12.5px;
+  color: var(--text-faint);
 }
 
-/* --- 卡片 --- */
+/* 小標：大寫、寬字距，配色用主色 */
+.eyebrow {
+  font-size: 12.5px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* --- 分頁導覽 ----------------------------------------------- */
+
+.nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.nav-tab {
+  flex: 1;
+  text-align: center;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.nav-tab.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+/* --- 卡片 --------------------------------------------------- */
+
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 16px;
+  box-shadow: var(--shadow);
+  padding: 18px;
   margin-bottom: 12px;
 }
 
 .card h2 {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 16.5px;
   margin: 0 0 6px;
-  font-size: 17px;
 }
 
-.card .thesis {
-  color: var(--text-dim);
-  font-size: 14px;
-  line-height: 1.6;
+.thesis {
+  color: var(--text-muted);
+  font-size: 13.5px;
+  line-height: 1.75;
   margin: 0;
 }
 
-.card .meta {
-  color: var(--text-dim);
+/* 提示語用左側細線引出來，像引文 */
+.cue {
+  margin: 10px 0 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--line);
+  color: var(--text-muted);
+  font-size: 13.5px;
+}
+
+.meta {
+  color: var(--text-faint);
   font-size: 12px;
   margin-top: 10px;
 }
 
-/* --- chip --- */
+.card-link {
+  display: block;
+}
+
+/* --- chip：三種語氣 ----------------------------------------- */
+
 .chip {
-  display: inline-block;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 3px 10px;
-  font-size: 12px;
-  color: var(--text-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  padding: 5px 12px;
+  font-size: 12.5px;
+  color: var(--text-muted);
   margin-right: 6px;
-  margin-top: 6px;
+  margin-top: 7px;
+  font-variant-numeric: tabular-nums;
 }
 
+/* 節奏：內凹小方塊，跟計量型的 pill 區隔 */
 .chip.tempo {
-  color: var(--warn);
-  border-color: #4a3a10;
-  background: #241d0c;
+  background: var(--surface-sunken);
+  border-color: transparent;
+  border-radius: 6px;
+  color: var(--text-faint);
+  font-size: 11.5px;
+  padding: 4px 9px;
 }
 
+/* 目標組數次數：這是全卡最該被看到的數字 */
 .chip.mode {
-  color: var(--accent);
-  border-color: var(--accent-dim);
-  background: #0e2415;
+  background: var(--accent-tint);
+  border-color: transparent;
+  color: var(--accent-strong);
+  font-weight: 600;
 }
 
-/* --- 按鈕 --- */
+/* --- 按鈕 --------------------------------------------------- */
+
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: var(--surface-2);
+  width: 100%;
+  background: var(--surface);
   color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 11px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  padding: 12px 18px;
   font-size: 15px;
   font-family: inherit;
+  font-weight: 500;
   cursor: pointer;
-  width: 100%;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
 }
 
 .btn:active {
@@ -142,81 +270,130 @@ a {
 .btn.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #06220f;
+  color: var(--on-accent);
   font-weight: 600;
+  box-shadow: var(--shadow);
 }
 
 .btn.ghost {
   background: transparent;
+  color: var(--text-muted);
 }
 
 .btn.small {
   width: auto;
-  padding: 7px 12px;
+  padding: 7px 14px;
   font-size: 13px;
 }
 
-/* --- 表單 --- */
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* --- 表單 --------------------------------------------------- */
+
 .field {
   margin-bottom: 14px;
 }
 
 .field label {
   display: block;
-  font-size: 13px;
-  color: var(--text-dim);
+  font-size: 12.5px;
+  color: var(--text-muted);
   margin-bottom: 6px;
+  font-weight: 500;
 }
 
 .field input,
 .field textarea,
 .field select {
   width: 100%;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   color: var(--text);
   padding: 11px 12px;
-  font-size: 16px; /* 16px 以下 iOS Safari 會自動放大 */
+  font-size: 16px;
   font-family: inherit;
 }
 
 .field input:focus,
-.field textarea:focus {
+.field textarea:focus,
+.field select:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-tint);
 }
 
-/* --- 訊息 --- */
-.notice {
-  border-radius: var(--radius-sm);
-  padding: 11px 13px;
+.two-col {
+  display: flex;
+  gap: 10px;
+}
+
+.two-col .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.subhead {
+  font-family: var(--font-serif);
   font-size: 14px;
-  line-height: 1.6;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin: 20px 0 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.editor-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.editor-actions .btn {
+  flex: 1;
+}
+
+/* --- 訊息 --------------------------------------------------- */
+
+.notice {
+  border-radius: 14px;
+  padding: 13px 15px;
+  font-size: 13.5px;
+  line-height: 1.75;
   margin-bottom: 14px;
 }
 
 .notice.error {
-  background: #2a1416;
-  border: 1px solid #4a1f23;
-  color: #fca5a5;
+  background: var(--danger-tint);
+  color: var(--text);
 }
 
 .notice.info {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text-dim);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
 }
 
 .empty {
   text-align: center;
-  color: var(--text-dim);
+  color: var(--text-faint);
   padding: 44px 16px;
-  font-size: 14px;
-  line-height: 1.8;
+  font-size: 13.5px;
+  line-height: 1.9;
 }
 
-/* --- 登入頁 --- */
+.saved-hint {
+  color: var(--accent);
+}
+
+.dim-hint {
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+/* --- 登入頁 ------------------------------------------------- */
+
 .auth-wrap {
   min-height: 100dvh;
   display: flex;
@@ -231,14 +408,16 @@ a {
 }
 
 .auth-box h1 {
-  font-size: 20px;
-  margin: 0 0 4px;
+  font-family: var(--font-serif);
+  font-size: 27px;
+  font-weight: 700;
+  margin: 0 0 6px;
 }
 
 .auth-box .sub {
-  color: var(--text-dim);
-  font-size: 13px;
-  margin: 0 0 22px;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  margin: 0 0 24px;
 }
 
 /* =============================================================
@@ -247,122 +426,139 @@ a {
 
 .shell.train {
   padding-top: 0;
+  padding-bottom: 170px;
 }
 
-/* --- 頂部進度（固定在畫面上緣，練到第 7 個動作也看得到還剩多少）--- */
 .progress-bar-wrap {
   position: sticky;
   top: 0;
   z-index: 20;
   background: var(--bg);
-  padding: 14px 0 10px;
-  margin-bottom: 12px;
+  padding: 18px 0 12px;
+  margin-bottom: 16px;
 }
 
 .progress-line {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .progress-title {
-  font-size: 17px;
-  font-weight: 600;
+  font-family: var(--font-serif);
+  font-size: 19px;
+  font-weight: 700;
+  min-width: 0;
+}
+
+.progress-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
 }
 
 .progress-stat {
   font-size: 12px;
-  color: var(--text-dim);
+  color: var(--text-faint);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .progress-track {
-  height: 4px;
-  background: var(--surface-2);
-  border-radius: 999px;
+  height: 8px;
+  background: var(--surface-sunken);
+  border-radius: var(--pill);
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
   background: var(--accent);
-  border-radius: 999px;
-  transition: width 0.25s ease;
+  border-radius: var(--pill);
+  transition: width 0.35s ease;
 }
 
-/* --- 收合起來的動作列 --- */
+/* --- 收合起來的動作列 --------------------------------------- */
+
 .ex-collapsed {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
   color: var(--text);
-  padding: 13px 14px;
-  margin-bottom: 8px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
   font-family: inherit;
   font-size: 15px;
   text-align: left;
   cursor: pointer;
+  box-shadow: var(--shadow);
 }
 
 .ex-collapsed.complete {
-  color: var(--text-dim);
-  border-color: var(--accent-dim);
+  color: var(--text-faint);
+  background: var(--surface-sunken);
+  box-shadow: none;
 }
 
+/* 編號用襯線體，跟內文拉開層次 */
 .ex-idx {
-  color: var(--text-dim);
-  font-size: 12px;
-  min-width: 16px;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-faint);
+  min-width: 24px;
+  font-variant-numeric: tabular-nums;
 }
 
 .ex-name {
   flex: 1;
+  min-width: 0;
 }
 
 .ex-count {
   font-size: 12px;
-  color: var(--text-dim);
+  color: var(--text-faint);
   font-variant-numeric: tabular-nums;
 }
 
 .ex-mark {
   color: var(--accent);
   min-width: 14px;
+  font-weight: 700;
 }
 
-.card.ex-open {
-  border-color: var(--border);
+.card.ex-open h2 {
+  font-size: 17.5px;
 }
 
-.card .cue {
-  margin-top: 10px;
-}
+/* --- 上次練了什麼 ------------------------------------------- */
 
-/* --- 上次練了什麼 --- */
 .prev-line {
   margin-top: 12px;
-  padding: 9px 11px;
-  background: var(--surface-2);
+  padding: 10px 12px;
+  background: var(--surface-sunken);
   border-radius: var(--radius-sm);
-  font-size: 13px;
-  color: var(--text-dim);
-  line-height: 1.6;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.7;
   font-variant-numeric: tabular-nums;
 }
 
 .prev-feel {
   margin-top: 3px;
   font-style: italic;
+  color: var(--text-faint);
 }
 
-/* --- 組數列 --- */
+/* --- 組數列 ------------------------------------------------- */
+
 .sets {
   margin-top: 14px;
   display: flex;
@@ -378,10 +574,9 @@ a {
 
 .set-row.open {
   display: block;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: var(--surface-sunken);
   border-radius: var(--radius-sm);
-  padding: 13px;
+  padding: 14px;
 }
 
 .set-tap {
@@ -389,62 +584,75 @@ a {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: var(--surface);
+  border: 1.5px solid var(--line);
   border-radius: var(--radius-sm);
   color: var(--text);
-  padding: 13px 14px;
+  padding: 12px 14px;
   font-size: 15px;
   font-family: inherit;
   cursor: pointer;
   text-align: left;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.set-tap:active {
+  transform: scale(0.99);
 }
 
 .set-row.done .set-tap {
-  border-color: var(--accent-dim);
-  background: #0e2415;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
 }
 
 .set-no {
-  color: var(--text-dim);
-  font-size: 13px;
-  min-width: 56px;
+  color: var(--text-faint);
+  font-size: 12.5px;
+  min-width: 54px;
+}
+
+.set-row.done .set-no {
+  color: var(--on-accent);
+  opacity: 0.75;
 }
 
 .set-val {
   flex: 1;
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 .set-empty {
-  color: var(--text-dim);
-  font-size: 14px;
+  color: var(--text-faint);
+  font-size: 13.5px;
+  font-weight: 400;
 }
 
 .set-mark {
+  font-size: 15px;
+  font-weight: 700;
   color: var(--accent);
-  font-size: 16px;
 }
 
 .set-row.done .set-mark {
-  font-weight: 700;
+  color: var(--on-accent);
 }
 
 .set-del button {
   height: 100%;
   background: transparent;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  color: var(--text-dim);
+  color: var(--text-faint);
   font-size: 18px;
-  padding: 0 12px;
+  padding: 0 13px;
   cursor: pointer;
   font-family: inherit;
 }
 
-/* --- 單組輸入 --- */
 .set-editor .set-no {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .prefill-hint {
@@ -453,51 +661,23 @@ a {
   margin-bottom: 10px;
 }
 
-.two-col {
-  display: flex;
-  gap: 10px;
+.manual-block {
+  margin-top: 14px;
 }
 
-.two-col .field {
-  flex: 1;
-  margin-bottom: 12px;
-}
-
-.editor-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.editor-actions .btn {
-  flex: 1;
-}
-
-.manual-row {
-  display: flex;
-  gap: 8px;
-  align-items: flex-end;
-  margin-top: 12px;
-}
-
-.manual-row .field {
-  flex: 1;
-  margin-bottom: 0;
+.manual-caption {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-bottom: 4px;
 }
 
 .feel-note {
-  margin-top: 14px;
+  margin-top: 16px;
   margin-bottom: 0;
 }
 
-.saved-hint {
-  color: var(--accent);
-}
+/* --- 組間休息倒數 ------------------------------------------- */
 
-.dim-hint {
-  color: var(--text-dim);
-}
-
-/* --- 組間休息倒數（固定在畫面底部，不擋住上面的動作）--- */
 .rest-timer {
   position: fixed;
   left: 0;
@@ -505,7 +685,8 @@ a {
   bottom: 0;
   z-index: 30;
   background: var(--surface);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -8px 24px -12px rgba(29, 33, 27, 0.25);
   padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -514,7 +695,7 @@ a {
 }
 
 .rest-bar {
-  height: 3px;
+  height: 4px;
   background: var(--accent);
   transition: width 0.25s linear;
 }
@@ -522,15 +703,15 @@ a {
 .rest-body {
   max-width: 640px;
   margin: 0 auto;
-  padding: 14px 16px;
+  padding: 14px 20px;
   display: flex;
   align-items: center;
   gap: 14px;
 }
 
 .rest-label {
-  font-size: 13px;
-  color: var(--text-dim);
+  font-size: 12.5px;
+  color: var(--text-faint);
 }
 
 .rest-timer.done .rest-label {
@@ -539,9 +720,11 @@ a {
 
 .rest-count {
   flex: 1;
-  font-size: 26px;
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent-strong);
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
 }
 
 .rest-actions {
@@ -549,16 +732,16 @@ a {
   gap: 8px;
 }
 
-/* --- hold 型計時器 --- */
+/* --- hold 計時器 -------------------------------------------- */
+
 .hold-timer.running {
-  background: var(--surface);
-  border: 1px solid var(--accent-dim);
+  background: var(--surface-sunken);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .hold-bar {
-  height: 3px;
+  height: 4px;
   background: var(--accent);
   transition: width 0.2s linear;
 }
@@ -572,33 +755,20 @@ a {
 
 .hold-count {
   flex: 1;
-  font-size: 30px;
+  font-family: var(--font-serif);
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--accent-strong);
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
 }
 
-/* 休息列固定在底部時，內容要留出空間免得被蓋住 */
-.shell.train {
-  padding-bottom: 160px;
-}
-
-/* 卡片連結不要有 hover 底線之類的預設樣式 */
-.card-link {
-  display: block;
-}
-
-/* --- 音效設定 --- */
-.progress-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+/* --- 音效設定 ----------------------------------------------- */
 
 .sound-btn {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 5px 9px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  padding: 6px 11px;
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
@@ -606,11 +776,12 @@ a {
 }
 
 .sound-panel {
-  margin-top: 10px;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+  margin-top: 12px;
 }
 
 .sound-row {
@@ -618,26 +789,25 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 9px;
+  margin-bottom: 10px;
 }
 
 .sound-label {
   font-size: 13px;
-  color: var(--text-dim);
+  color: var(--text-muted);
 }
 
-/* 分段按鈕 */
 .seg {
   display: flex;
-  gap: 4px;
+  gap: 5px;
 }
 
 .seg button {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-dim);
-  padding: 6px 12px;
+  background: var(--surface-sunken);
+  border: 1px solid transparent;
+  border-radius: var(--pill);
+  color: var(--text-muted);
+  padding: 6px 13px;
   font-size: 13px;
   font-family: inherit;
   cursor: pointer;
@@ -645,9 +815,10 @@ a {
 }
 
 .seg button.on {
-  background: var(--accent-dim);
+  background: var(--accent);
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
 }
 
 .seg button:disabled {
@@ -657,16 +828,16 @@ a {
 
 .sound-hint {
   font-size: 12px;
-  color: var(--text-dim);
-  line-height: 1.6;
-  margin-top: 2px;
+  color: var(--text-faint);
+  line-height: 1.7;
 }
 
-/* --- 滾輪選擇器 --- */
+/* --- 滾輪選擇器 --------------------------------------------- */
+
 .wheels {
   display: flex;
   gap: 10px;
-  margin: 4px 0 14px;
+  margin: 4px 0 16px;
 }
 
 .wheel-field {
@@ -675,14 +846,16 @@ a {
 }
 
 .wheel-label {
-  font-size: 13px;
-  color: var(--text-dim);
-  margin-bottom: 6px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-bottom: 7px;
   text-align: center;
+  font-weight: 500;
 }
 
 .wheel-unit {
-  font-size: 12px;
+  font-size: 11.5px;
+  color: var(--text-faint);
 }
 
 .wheel-wrap {
@@ -695,10 +868,10 @@ a {
   flex: 0 0 auto;
   width: 34px;
   height: 34px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--text-muted);
   font-size: 17px;
   line-height: 1;
   font-family: inherit;
@@ -714,22 +887,19 @@ a {
   position: relative;
   flex: 1;
   min-width: 0;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
-/* 正中間那格的選取框，純視覺 */
 .wheel-selection {
   position: absolute;
   left: 0;
   right: 0;
   top: 50%;
   transform: translateY(-50%);
-  border-top: 1px solid var(--accent-dim);
-  border-bottom: 1px solid var(--accent-dim);
-  background: #0e2415;
+  background: var(--accent-tint);
   pointer-events: none;
 }
 
@@ -737,12 +907,11 @@ a {
   height: 100%;
   overflow-y: auto;
   scroll-snap-type: y mandatory;
-  /* 捲到底不要把整個頁面一起帶著跑 */
   overscroll-behavior: contain;
   touch-action: pan-y;
-  scrollbar-width: none;
   position: relative;
   z-index: 1;
+  scrollbar-width: none;
 }
 
 .wheel-scroll::-webkit-scrollbar {
@@ -761,110 +930,79 @@ a {
   scroll-snap-align: center;
   font-size: 16px;
   font-variant-numeric: tabular-nums;
-  color: var(--text-dim);
-  /* 上下的值淡一點，視線自然落在中間 */
-  opacity: 0.45;
+  color: var(--text-faint);
+  opacity: 0.5;
   transition: opacity 0.12s, color 0.12s;
   user-select: none;
 }
 
 .wheel-item.on {
-  color: var(--text);
+  font-family: var(--font-serif);
+  color: var(--accent-strong);
   opacity: 1;
-  font-size: 19px;
-  font-weight: 600;
-}
-
-/* --- hold 型的手動輸入區 --- */
-.manual-block {
-  margin-top: 14px;
-}
-
-.manual-caption {
-  font-size: 12px;
-  color: var(--text-dim);
-  margin-bottom: 2px;
+  font-size: 20px;
+  font-weight: 700;
 }
 
 /* =============================================================
-   導覽、動作庫、動作選擇器
+   動作庫
    ============================================================= */
 
-.nav {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 16px;
-}
-
-.nav-tab {
-  flex: 1;
-  text-align: center;
-  padding: 10px 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-dim);
-  font-size: 14px;
-}
-
-.nav-tab.on {
-  background: var(--accent-dim);
-  border-color: var(--accent);
-  color: var(--accent);
-  font-weight: 600;
-}
-
-/* --- 分類篩選 chip --- */
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .chip-btn {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  color: var(--text-dim);
-  padding: 6px 13px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  color: var(--text-muted);
+  padding: 7px 14px;
   font-size: 13px;
   font-family: inherit;
   cursor: pointer;
   font-variant-numeric: tabular-nums;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .chip-btn.on {
-  background: var(--accent-dim);
+  background: var(--accent);
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
 }
 
 .search-field {
-  margin-bottom: 16px;
-}
-
-/* --- 動作庫分組 --- */
-.ex-group {
   margin-bottom: 18px;
 }
 
+.ex-group {
+  margin-bottom: 22px;
+}
+
+/* 分類標題沿用 Artifact 的 tag + 標題組合 */
 .group-head {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-dim);
-  letter-spacing: 1px;
-  margin: 0 0 8px 2px;
-  text-transform: uppercase;
+  align-items: baseline;
+  gap: 9px;
+  margin: 0 0 10px 2px;
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-strong);
 }
 
 .group-count {
-  font-weight: 400;
-  font-size: 12px;
-  opacity: 0.7;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 11.5px;
+  color: var(--accent-strong);
+  background: var(--accent-tint);
+  border-radius: 6px;
+  padding: 2px 8px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -880,14 +1018,16 @@ a {
 }
 
 .ex-title {
+  font-family: var(--font-serif);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 3px;
 }
 
 .ex-defaults {
-  font-size: 13px;
-  color: var(--accent);
+  font-size: 12.5px;
+  color: var(--accent-strong);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -898,32 +1038,24 @@ a {
   flex: 0 0 auto;
 }
 
-.subhead {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-dim);
-  margin: 18px 0 10px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
-}
+/* --- 動作選擇器 --------------------------------------------- */
 
-/* --- 動作選擇器（建卡時一鍵加入）--- */
 .card.picker {
-  padding-bottom: 8px;
+  padding-bottom: 10px;
 }
 
 .picker-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  font-family: var(--font-serif);
 }
 
 .picker-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  /* 動作多的時候不要把整頁撐長，自己捲 */
   max-height: 46vh;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -936,8 +1068,8 @@ a {
   align-items: center;
   gap: 12px;
   width: 100%;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   color: var(--text);
   padding: 11px 13px;
@@ -947,7 +1079,7 @@ a {
 }
 
 .picker-item.used {
-  border-color: var(--accent-dim);
+  border-color: var(--accent);
 }
 
 .picker-main {
@@ -958,6 +1090,7 @@ a {
 .picker-name {
   display: block;
   font-size: 15px;
+  font-weight: 500;
 }
 
 .picker-used {
@@ -969,7 +1102,7 @@ a {
 .picker-sub {
   display: block;
   font-size: 12px;
-  color: var(--text-dim);
+  color: var(--text-faint);
   margin-top: 2px;
   font-variant-numeric: tabular-nums;
 }
@@ -981,78 +1114,32 @@ a {
 }
 
 /* =============================================================
-   卷軸
-   ============================================================= */
-
-/* Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
-
-/* WebKit：細一點、圓角、不佔版面感 */
-::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 999px;
-  /* 用透明邊框把滑塊做細，滑鼠靠近時才顯得明顯 */
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #3a4150;
-  background-clip: content-box;
-}
-
-::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-/* 滾輪選擇器維持完全隱藏：它本身就是一個「捲動即選取」的控制項，
-   多一條卷軸只會讓人以為那是可以拖的東西 */
-.wheel-scroll {
-  scrollbar-width: none;
-}
-
-.wheel-scroll::-webkit-scrollbar {
-  display: none;
-}
-
-/* =============================================================
    封存與刪除
    ============================================================= */
 
 .danger {
-  margin-top: 28px;
+  margin-top: 30px;
 }
 
 .danger-explain {
   font-size: 13px;
-  color: var(--text-dim);
-  line-height: 1.9;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 12px 13px;
+  color: var(--text-muted);
+  line-height: 1.95;
+  background: var(--surface-sunken);
+  border-radius: 14px;
+  padding: 13px 15px;
   margin-bottom: 12px;
 }
 
 .danger-explain strong {
   color: var(--text);
+  font-weight: 600;
 }
 
 .danger-explain em {
   font-style: normal;
-  color: var(--accent);
+  color: var(--accent-strong);
+  font-weight: 600;
 }
 
 .danger-btn {
@@ -1065,15 +1152,14 @@ a {
 }
 
 .btn.danger-solid {
-  width: 100%;
-  background: #3a1418;
+  background: var(--danger);
   border-color: var(--danger);
-  color: #fca5a5;
+  color: var(--danger-on);
+  font-weight: 600;
 }
 
-/* --- 首頁的封存區 --- */
 .archived {
-  margin-top: 28px;
+  margin-top: 30px;
 }
 
 .archived-toggle {
@@ -1082,11 +1168,11 @@ a {
   align-items: center;
   justify-content: space-between;
   background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-dim);
-  padding: 11px 14px;
-  font-size: 14px;
+  border: 1px dashed var(--line);
+  border-radius: var(--pill);
+  color: var(--text-muted);
+  padding: 11px 18px;
+  font-size: 13.5px;
   font-family: inherit;
   cursor: pointer;
 }
@@ -1097,19 +1183,55 @@ a {
 
 .archived-hint {
   font-size: 12px;
-  color: var(--text-dim);
+  color: var(--text-faint);
   line-height: 1.7;
-  margin: 10px 2px;
+  margin: 12px 4px;
 }
 
 .card.archived-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  opacity: 0.75;
+  background: var(--surface-sunken);
+  box-shadow: none;
 }
 
 .archived-main {
   flex: 1;
   min-width: 0;
+}
+
+/* =============================================================
+   卷軸
+   ============================================================= */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: var(--pill);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
 }
