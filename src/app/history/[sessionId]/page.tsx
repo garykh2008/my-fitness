@@ -85,16 +85,19 @@ export default async function HistoryDetailPage({
                     <span className="done-set-no">{s.set_index}</span>
                     {ce.mode === "hold" ? (
                       `${s.hold_seconds_done ?? "—"} 秒`
+                    ) : ce.mode === "interval" ? (
+                      <>
+                        {s.weight_kg ?? "—"} kg
+                        {s.hold_seconds_done != null && (
+                          <span className="set-partial">
+                            {" "}
+                            · {s.hold_seconds_done} 秒
+                          </span>
+                        )}
+                      </>
                     ) : (
                       <>
                         {s.weight_kg ?? "—"} kg × {s.reps_done ?? "—"}
-                        {ce.mode === "interval" &&
-                          s.hold_seconds_done != null && (
-                            <span className="set-partial">
-                              {" "}
-                              · {s.hold_seconds_done} 秒
-                            </span>
-                          )}
                       </>
                     )}
                   </span>

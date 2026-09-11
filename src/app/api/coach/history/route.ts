@@ -68,15 +68,26 @@ export async function GET(request: Request) {
           const name = ce?.exercises?.name_zh ?? "(動作已刪除)";
           const sets = [...log.set_logs]
             .sort((a, b) => a.set_index - b.set_index)
-            .map((sl) =>
-              ce?.mode === "hold"
-                ? { set: sl.set_index, hold_seconds: sl.hold_seconds_done }
-                : {
-                    set: sl.set_index,
-                    weight_kg: sl.weight_kg,
-                    reps: sl.reps_done,
-                  }
-            );
+            .map((sl) => {
+              if (ce?.mode === "hold") {
+                return { set: sl.set_index, hold_seconds: sl.hold_seconds_done };
+              }
+              // 時間制不記次數，只記重量；提前結束才會有實際秒數
+              if (ce?.mode === "interval") {
+                return {
+                  set: sl.set_index,
+                  weight_kg: sl.weight_kg,
+                  ...(sl.hold_seconds_done != null
+                    ? { seconds_done: sl.hold_seconds_done }
+                    : {}),
+                };
+              }
+              return {
+                set: sl.set_index,
+                weight_kg: sl.weight_kg,
+                reps: sl.reps_done,
+              };
+            });
 
           return {
             name,

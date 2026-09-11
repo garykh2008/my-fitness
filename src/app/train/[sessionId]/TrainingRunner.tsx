@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import {
   saveSet,
   deleteSet,
@@ -71,11 +78,11 @@ function describePrevious(
 ): string {
   const d = new Date(prev.performed_at);
   const when = `${d.getMonth() + 1}/${d.getDate()}`;
-  const parts = prev.sets.slice(0, 4).map((s) =>
-    mode === "hold"
-      ? `${s.hold_seconds_done ?? "—"}s`
-      : `${s.weight_kg ?? "—"}kg × ${s.reps_done ?? "—"}`
-  );
+  const parts = prev.sets.slice(0, 4).map((s) => {
+    if (mode === "hold") return `${s.hold_seconds_done ?? "—"}s`;
+    if (mode === "interval") return `${s.weight_kg ?? "—"}kg`;
+    return `${s.weight_kg ?? "—"}kg × ${s.reps_done ?? "—"}`;
+  });
   const more = prev.sets.length > 4 ? ` …等 ${prev.sets.length} 組` : "";
   return `上次 ${when}：${parts.join("、")}${more}`;
 }
@@ -148,8 +155,9 @@ function SetEditor({
           </div>
         )}
 
+        {/* 時間制不記次數：做 50 秒的時候沒有人在數下數，記重量就夠了 */}
         <div className="manual-caption" style={{ marginTop: 14 }}>
-          這 {target} 秒做了多少
+          這 {target} 秒用的重量
         </div>
         <div className="wheels">
           <Wheel
@@ -158,12 +166,6 @@ function SetEditor({
             values={WEIGHT_VALUES}
             value={weight}
             onChange={setWeight}
-          />
-          <Wheel
-            label="次數"
-            values={REPS_VALUES}
-            value={reps}
-            onChange={setReps}
           />
         </div>
 
@@ -175,7 +177,6 @@ function SetEditor({
             onClick={() =>
               onSave({
                 weight_kg: String(weight),
-                reps_done: String(reps),
                 ...(elapsed !== null
                   ? { hold_seconds_done: String(elapsed) }
                   : {}),
@@ -366,7 +367,21 @@ export default function TrainingRunner({
   const [openSet, setOpenSet] = useState<{ ceId: string; n: number } | null>(
     null
   );
-  const [resting, setResting] = useState<{ seconds: number } | null>(null);
+  // seq 讓每次休息都是新的一輪：只換 seconds 的話 RestTimer 不會重新掛載，
+  // 倒數就會接著上一輪剩下的時間跑。
+  const [resting, setResting] = useState<{ seconds: number; seq: number } | null>(
+    null
+  );
+  const restSeqRef = useRef(0);
+
+  /**
+   * 打開某一組的輸入區 = 要開始練下一組了，休息到此為止。
+   * 不關掉的話，休息倒數會跟動作的計時器同時跑，兩組嗶聲交錯。
+   */
+  const openSetEditor = (ceId: string, n: number) => {
+    setResting(null);
+    setOpenSet({ ceId, n });
+  };
   const [pendingAdvance, setPendingAdvance] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
@@ -424,7 +439,8 @@ export default function TrainingRunner({
       setPendingAdvance(willBeDone ? index : null);
 
       if (ce.rest_seconds && ce.rest_seconds > 0) {
-        setResting({ seconds: ce.rest_seconds });
+        restSeqRef.current += 1;
+        setResting({ seconds: ce.rest_seconds, seq: restSeqRef.current });
       } else if (willBeDone) {
         const next = nextIncompleteAfter(index);
         if (next !== null) setOpenIndex(next);
@@ -572,24 +588,27 @@ export default function TrainingRunner({
                     <button
                       className="set-tap"
                       type="button"
-                      onClick={() => setOpenSet({ ceId: ce.id, n })}
+                      onClick={() => openSetEditor(ce.id, n)}
                     >
                       <span className="set-no">第 {n} 組</span>
                       <span className="set-val">
                         {existing ? (
                           ce.mode === "hold" ? (
                             <>{existing.hold_seconds_done ?? "—"} 秒</>
+                          ) : ce.mode === "interval" ? (
+                            <>
+                              {existing.weight_kg ?? "—"} kg
+                              {existing.hold_seconds_done != null && (
+                                <span className="set-partial">
+                                  {" "}
+                                  · {existing.hold_seconds_done} 秒
+                                </span>
+                              )}
+                            </>
                           ) : (
                             <>
                               {existing.weight_kg ?? "—"} kg ×{" "}
                               {existing.reps_done ?? "—"}
-                              {ce.mode === "interval" &&
-                                existing.hold_seconds_done != null && (
-                                  <span className="set-partial">
-                                    {" "}
-                                    · {existing.hold_seconds_done} 秒
-                                  </span>
-                                )}
                             </>
                           )
                         ) : (
@@ -687,7 +706,12 @@ export default function TrainingRunner({
       </form>
 
       {resting && (
-        <RestTimer seconds={resting.seconds} onDone={endRest} sound={sound} />
+        <RestTimer
+          key={resting.seq}
+          seconds={resting.seconds}
+          onDone={endRest}
+          sound={sound}
+        />
       )}
     </main>
   );
