@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import {
   saveSet,
   deleteSet,
@@ -265,6 +265,16 @@ export default function TrainingRunner({
   previous: PrevMap;
 }) {
   useWakeLock(true);
+
+  // Server Action 的 redirect() 不會重設捲動位置，而「開始訓練」那顆按鈕
+  // 在卡片頁的最下方（要捲過整份動作清單才看得到），所以跳轉過來時
+  // 會直接停在執行頁的底部。這裡把它拉回最上面。
+  //
+  // 依賴 session.id 而不是空陣列：換一次訓練就重跑一次；
+  // 存一組重量只是 revalidate、元件不會重新掛載，不會亂跳。
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [session.id]);
 
   const [sound, setSound] = useSoundSettings();
   const [soundPanelOpen, setSoundPanelOpen] = useState(false);
