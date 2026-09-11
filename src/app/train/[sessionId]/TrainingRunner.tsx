@@ -126,9 +126,14 @@ function SetEditor({
   const [hold, setHold] = useState<number>(
     src?.hold_seconds_done ?? ce.target_hold_seconds ?? 30
   );
-  // interval 提前結束時的實際秒數；做滿就是 null（不用特別記）
+  // interval 提前結束時的實際秒數；做滿就是 null（不用特別記）。
+  //
+  // 只有在「這一組本來就記過」時才帶入。prefill 對還沒記錄的組來說是
+  // 上一組的紀錄 —— 重量往下帶是對的（通常同重量繼續做），但「提前在
+  // 42 秒結束」是那一組的事實，不是給下一組的建議，帶過去會讓下一組
+  // 一打開就顯示不存在的提示。
   const [elapsed, setElapsed] = useState<number | null>(
-    src?.hold_seconds_done ?? null
+    prefill?.isRecord ? (src?.hold_seconds_done ?? null) : null
   );
 
   const hint =
