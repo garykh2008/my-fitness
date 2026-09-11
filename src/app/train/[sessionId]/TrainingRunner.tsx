@@ -23,7 +23,7 @@ import HoldTimer from "./HoldTimer";
 import { useWakeLock } from "./useWakeLock";
 import { unlockAudio } from "./timer-utils";
 import { useSoundSettings } from "./useSoundSettings";
-import SoundControls from "./SoundControls";
+import { SoundButton, SoundPanel } from "./SoundControls";
 import MediaPreview from "../../MediaPreview";
 import Wheel, { range } from "./Wheel";
 
@@ -370,9 +370,8 @@ export default function TrainingRunner({
             <div className="progress-stat">
               {doneExercises}/{exercises.length} 動作 · {doneSets}/{totalSets} 組
             </div>
-            <SoundControls
+            <SoundButton
               settings={sound}
-              onChange={setSound}
               open={soundPanelOpen}
               onToggleOpen={() => setSoundPanelOpen((v) => !v)}
             />
@@ -384,6 +383,9 @@ export default function TrainingRunner({
             style={{ width: `${totalSets ? (doneSets / totalSets) * 100 : 0}%` }}
           />
         </div>
+
+        {/* 面板放在進度條之後，才能吃到整行寬度 */}
+        {soundPanelOpen && <SoundPanel settings={sound} onChange={setSound} />}
       </header>
 
       {error && <div className="notice error">{error}</div>}

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, RedirectType } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 
 function num(formData: FormData, key: string): number | null {
@@ -144,5 +144,6 @@ export async function abandonSession(formData: FormData): Promise<void> {
   await supabase.from("workout_sessions").delete().eq("id", sessionId);
 
   revalidatePath("/");
-  redirect(cardId ? `/cards/${cardId}` : "/");
+  // replace：這次訓練已經刪掉，執行頁不該留在歷史裡等著被返回進去
+  redirect(cardId ? `/cards/${cardId}` : "/", RedirectType.replace);
 }

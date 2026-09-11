@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, RedirectType } from "next/navigation";
 import { getSupabase, getCurrentUser } from "@/lib/supabase";
 import { cardExerciseDefaults } from "@/lib/types";
 import type { Exercise } from "@/lib/types";
@@ -120,7 +120,9 @@ export async function deleteCard(formData: FormData): Promise<void> {
   await supabase.from("workout_cards").delete().eq("id", id);
 
   revalidatePath("/");
-  redirect("/");
+  // replace 而不是 push：這張卡已經不存在了，把編輯頁留在歷史裡
+  // 只會讓使用者按返回時撞上 404。
+  redirect("/", RedirectType.replace);
 }
 
 // --- 卡片內的動作 -----------------------------------------------

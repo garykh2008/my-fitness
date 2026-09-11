@@ -1340,3 +1340,29 @@ a {
     rgba(0, 0, 0, 0.45)
   );
 }
+
+/* --- 404 --- */
+.notfound {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 420px;
+}
+
+.notfound h1 {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: clamp(24px, 6vw, 30px);
+  margin: 8px 0 12px;
+}
+
+.notfound .thesis {
+  margin-bottom: 26px;
+}
+
+.notfound-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
