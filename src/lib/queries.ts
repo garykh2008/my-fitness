@@ -152,6 +152,57 @@ export async function getPreviousPerformance(
   return out;
 }
 
+export interface SessionSummary {
+  id: string;
+  performed_at: string;
+  overall_note: string | null;
+  card_title: string | null;
+  exerciseCount: number;
+  setCount: number;
+}
+
+/**
+ * 訓練紀錄列表。
+ *
+ * 完全沒有 exercise_logs 的 session 不列出 —— 那是誤觸「開始訓練」留下的空殼，
+ * 不是一次訓練。有感受筆記但還沒記重量的仍會列出，那是真的練了。
+ */
+export async function listSessions(limit = 60): Promise<SessionSummary[]> {
+  const supabase = await getSupabase();
+
+  const { data, error } = await supabase
+    .from("workout_sessions")
+    .select(
+      `id, performed_at, overall_note,
+       workout_cards ( title ),
+       exercise_logs ( id, set_logs ( id ) )`
+    )
+    .order("performed_at", { ascending: false })
+    .limit(limit)
+    .returns<
+      {
+        id: string;
+        performed_at: string;
+        overall_note: string | null;
+        workout_cards: { title: string } | null;
+        exercise_logs: { id: string; set_logs: { id: string }[] }[];
+      }[]
+    >();
+
+  if (error) throw new Error(`讀取訓練紀錄失敗：${error.message}`);
+
+  return (data ?? [])
+    .filter((s) => s.exercise_logs.length > 0)
+    .map((s) => ({
+      id: s.id,
+      performed_at: s.performed_at,
+      overall_note: s.overall_note,
+      card_title: s.workout_cards?.title ?? null,
+      exerciseCount: s.exercise_logs.length,
+      setCount: s.exercise_logs.reduce((n, l) => n + l.set_logs.length, 0),
+    }));
+}
+
 export interface CardStats {
   sessionCount: number;
   setCount: number;

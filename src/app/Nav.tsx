@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "/", label: "訓練卡" },
+  { href: "/history", label: "紀錄" },
   { href: "/exercises", label: "動作庫" },
 ];
 

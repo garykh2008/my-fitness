@@ -1366,3 +1366,87 @@ a {
   flex-direction: column;
   gap: 9px;
 }
+
+/* =============================================================
+   訓練紀錄
+   ============================================================= */
+
+.card.session-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+/* 日期做成一個小方塊，掃列表時視線有個固定的錨點 */
+.session-date {
+  flex: 0 0 auto;
+  width: 52px;
+  text-align: center;
+  padding: 7px 0;
+  background: var(--accent-tint);
+  border-radius: var(--radius-sm);
+}
+
+.session-day {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-strong);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+
+.session-weekday {
+  display: block;
+  font-size: 11px;
+  color: var(--accent-strong);
+  opacity: 0.75;
+}
+
+.session-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-note {
+  margin-top: 6px;
+  /* 備註可能很長，列表只給兩行 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* --- 單次明細的組數 --- */
+.done-sets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.done-set {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.done-set-no {
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+/* 那天沒做的動作：留著但退到背景 */
+.card.skipped {
+  background: var(--surface-sunken);
+  box-shadow: none;
+  opacity: 0.8;
+}

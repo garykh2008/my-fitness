@@ -297,6 +297,21 @@ export async function moveCardExercise(formData: FormData): Promise<void> {
 
 // --- 開始一次訓練 -----------------------------------------------
 
+/** 沿用既有 session 的時間窗：這段時間內回來，算同一次訓練。 */
+const RESUME_WINDOW_HOURS = 6;
+
+/**
+ * 開始（或接續）一次訓練。
+ *
+ * 不是每按一次就插一列。順序是：
+ *   1. 這張卡有完全沒有紀錄的 session → 沿用（上次誤觸留下的空殼）
+ *   2. 這張卡有 6 小時內的 session → 沿用（你是回來接著練）
+ *   3. 都沒有 → 才建新的
+ *
+ * 刻意不用「當天」判斷：performed_at 是 timestamptz、容器跑在 UTC，
+ * 用日曆日會踩時區邊界（早上 7:00 台北 = 前一天 23:00 UTC）。
+ * 而且早上練完、晚上再練同一張卡本來就該算兩次。
+ */
 export async function startSession(formData: FormData): Promise<void> {
   const workout_card_id = String(formData.get("workout_card_id") ?? "");
   if (!workout_card_id) return;
@@ -305,6 +320,26 @@ export async function startSession(formData: FormData): Promise<void> {
   if (!user) redirect("/login");
 
   const supabase = await getSupabase();
+
+  const { data: recent } = await supabase
+    .from("workout_sessions")
+    .select("id, performed_at, exercise_logs ( id )")
+    .eq("workout_card_id", workout_card_id)
+    .order("performed_at", { ascending: false })
+    .limit(10)
+    .returns<
+      { id: string; performed_at: string; exercise_logs: { id: string }[] }[]
+    >();
+
+  const cutoff = Date.now() - RESUME_WINDOW_HOURS * 3600 * 1000;
+
+  const reusable =
+    // 空殼優先：沒有任何紀錄，沿用它不會蓋掉東西
+    (recent ?? []).find((s) => s.exercise_logs.length === 0) ??
+    (recent ?? []).find((s) => new Date(s.performed_at).getTime() >= cutoff);
+
+  if (reusable) redirect(`/train/${reusable.id}`);
+
   const { data, error } = await supabase
     .from("workout_sessions")
     .insert({ user_id: user.id, workout_card_id })
