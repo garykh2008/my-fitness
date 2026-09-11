@@ -11,7 +11,8 @@ import {
 } from "../../actions";
 import ExercisePicker from "./ExercisePicker";
 import DangerZone from "./DangerZone";
-import { formatTarget } from "@/lib/types";
+import { formatTarget, MODE_LABELS } from "@/lib/types";
+import type { ExerciseMode } from "@/lib/types";
 import type {
   Exercise,
   WorkoutCardDetail,
@@ -30,7 +31,7 @@ function SaveButton({ label }: { label: string }) {
 
 /** 目標設定欄位：mode 切換時只顯示對得上的欄位（DB 有 check constraint） */
 function TargetFields({ ce }: { ce?: CardExerciseWithExercise }) {
-  const [mode, setMode] = useState<"reps" | "hold">(ce?.mode ?? "reps");
+  const [mode, setMode] = useState<ExerciseMode>(ce?.mode ?? "reps");
 
   return (
     <>
@@ -39,10 +40,13 @@ function TargetFields({ ce }: { ce?: CardExerciseWithExercise }) {
         <select
           name="mode"
           value={mode}
-          onChange={(e) => setMode(e.target.value as "reps" | "hold")}
+          onChange={(e) => setMode(e.target.value as ExerciseMode)}
         >
-          <option value="reps">次數型</option>
-          <option value="hold">持續秒數型（等長收縮）</option>
+          {(Object.keys(MODE_LABELS) as ExerciseMode[]).map((m) => (
+            <option key={m} value={m}>
+              {MODE_LABELS[m]}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -80,7 +84,7 @@ function TargetFields({ ce }: { ce?: CardExerciseWithExercise }) {
             />
           </div>
         </div>
-      ) : (
+      ) : mode === "hold" ? (
         <div className="field">
           <label>持續秒數</label>
           <input
@@ -89,6 +93,20 @@ function TargetFields({ ce }: { ce?: CardExerciseWithExercise }) {
             inputMode="numeric"
             min={1}
             defaultValue={ce?.target_hold_seconds ?? ""}
+          />
+        </div>
+      ) : (
+        <div className="field">
+          <label>
+            每組秒數
+            <span className="dim-hint"> · 這段時間內盡量做</span>
+          </label>
+          <input
+            name="target_interval_seconds"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            defaultValue={ce?.target_interval_seconds ?? 45}
           />
         </div>
       )}

@@ -20,7 +20,8 @@ function int(formData: FormData, key: string): number | null {
  * 否則會撞上 exercises_default_targets_check。
  */
 function defaultsFrom(formData: FormData) {
-  const mode = String(formData.get("default_mode") ?? "reps") === "hold" ? "hold" : "reps";
+  const raw = String(formData.get("default_mode") ?? "reps");
+  const mode = raw === "hold" || raw === "interval" ? raw : "reps";
   return {
     default_mode: mode,
     default_sets: int(formData, "default_sets"),
@@ -28,6 +29,8 @@ function defaultsFrom(formData: FormData) {
     default_reps_max: mode === "reps" ? int(formData, "default_reps_max") : null,
     default_hold_seconds:
       mode === "hold" ? int(formData, "default_hold_seconds") : null,
+    default_interval_seconds:
+      mode === "interval" ? int(formData, "default_interval_seconds") : null,
     default_tempo: text(formData, "default_tempo"),
     default_rest_seconds: int(formData, "default_rest_seconds"),
     media_url: text(formData, "media_url"),

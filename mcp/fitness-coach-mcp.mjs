@@ -45,10 +45,19 @@ const EXERCISE_ITEM_SCHEMA = {
     equipment: { type: "string", description: "器材，例如 啞鈴 / 瑜珈墊 / 徒手" },
     mode: {
       type: "string",
-      enum: ["reps", "hold"],
+      enum: ["reps", "hold", "interval"],
       description:
-        "reps = 次數型；hold = 持續秒數型（等長收縮）。" +
-        "不填就沿用動作庫裡該動作的預設值（棒式之類的本來就是 hold，不用特別指定）。",
+        "reps = 組數 × 次數（一般重訓）；" +
+        "hold = 撐住 N 秒（等長收縮、棒式）；" +
+        "interval = 做 N 秒、記錄實際做了幾下（follow-along 型的時間制課表）。" +
+        "interval 跟 hold 的差別在記什麼：hold 記秒數，interval 記重量與次數。" +
+        "不填就沿用動作庫裡該動作的預設值。",
+    },
+    interval_seconds: {
+      type: "integer",
+      description:
+        "每組要做幾秒（mode=interval 時使用）。不填沿用動作庫預設。" +
+        "interval 不接受 reps_min/reps_max —— 做幾下是結果，不是目標。",
     },
     sets: { type: "integer", description: "目標組數。不填沿用動作庫預設。" },
     reps_min: {
@@ -135,10 +144,12 @@ const TOOLS = [
 
               mode: {
                 type: "string",
-                enum: ["reps", "hold"],
+                enum: ["reps", "hold", "interval"],
                 description:
-                  "預設類型。reps = 次數型（預設）；hold = 持續秒數型，" +
-                  "棒式、農夫走路、等長收縮這類要選 hold 並給 hold_seconds。",
+                  "預設類型。reps = 次數型（預設）；" +
+                  "hold = 持續秒數型，棒式、農夫走路、等長收縮這類選這個並給 hold_seconds；" +
+                  "interval = 時間制，做 N 秒記錄實際次數，" +
+                  "follow-along 影片課表的「每個動作做 50 秒」選這個並給 interval_seconds。",
               },
               sets: { type: "integer", description: "預設組數，不填為 3" },
               reps_min: { type: "integer", description: "預設次數下限，不填為 10" },
@@ -146,6 +157,10 @@ const TOOLS = [
               hold_seconds: {
                 type: "integer",
                 description: "預設持續秒數（mode=hold 時必填）",
+              },
+              interval_seconds: {
+                type: "integer",
+                description: "預設的每組秒數（mode=interval 時必填）",
               },
               tempo: {
                 type: "string",

@@ -41,6 +41,7 @@ export async function GET(request: Request) {
         reps_min: e.default_reps_min,
         reps_max: e.default_reps_max,
         hold_seconds: e.default_hold_seconds,
+        interval_seconds: e.default_interval_seconds,
         tempo: e.default_tempo,
         rest_seconds: e.default_rest_seconds,
         media_url: e.media_url,
@@ -73,6 +74,7 @@ interface NewExerciseInput {
   reps_min?: unknown;
   reps_max?: unknown;
   hold_seconds?: unknown;
+  interval_seconds?: unknown;
   tempo?: unknown;
   rest_seconds?: unknown;
   media_url?: unknown;
@@ -97,13 +99,23 @@ export async function POST(request: Request) {
     const items = (body.exercises as NewExerciseInput[]).map((raw, i) => {
       const where = `exercises[${i}]`;
       const mode = str(raw.mode, `${where}.mode`) ?? "reps";
-      if (mode !== "reps" && mode !== "hold") {
-        throw new BadRequest(`${where}.mode 必須是 reps 或 hold`);
+      if (mode !== "reps" && mode !== "hold" && mode !== "interval") {
+        throw new BadRequest(`${where}.mode 必須是 reps / hold / interval`);
       }
 
       const holdSeconds = int(raw.hold_seconds, `${where}.hold_seconds`);
       if (mode === "hold" && holdSeconds === null) {
         throw new BadRequest(`${where} 是 hold 型，必須提供 hold_seconds`);
+      }
+
+      const intervalSeconds = int(
+        raw.interval_seconds,
+        `${where}.interval_seconds`
+      );
+      if (mode === "interval" && intervalSeconds === null) {
+        throw new BadRequest(
+          `${where} 是 interval 型，必須提供 interval_seconds`
+        );
       }
 
       return {
@@ -123,6 +135,7 @@ export async function POST(request: Request) {
         default_reps_max:
           mode === "reps" ? (int(raw.reps_max, `${where}.reps_max`) ?? 15) : null,
         default_hold_seconds: mode === "hold" ? holdSeconds : null,
+        default_interval_seconds: mode === "interval" ? intervalSeconds : null,
         default_tempo: str(raw.tempo, `${where}.tempo`),
         default_rest_seconds:
           int(raw.rest_seconds, `${where}.rest_seconds`) ?? 60,

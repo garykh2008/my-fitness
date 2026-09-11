@@ -19,7 +19,7 @@ export default async function HistoryDetailPage({
   const detail = await getSessionDetail(sessionId);
   if (!detail) notFound();
 
-  const { session, card, logs } = detail;
+  const { session, card, logs, durationMinutes } = detail;
   const performed = new Date(session.performed_at);
 
   const totalSets = [...logs.values()].reduce(
@@ -39,7 +39,10 @@ export default async function HistoryDetailPage({
             })}
           </div>
           <h1>{card.title}</h1>
-          <div className="sub">{totalSets} 組</div>
+          <div className="sub">
+            {totalSets} 組
+            {durationMinutes !== null && <> · 練了 {durationMinutes} 分鐘</>}
+          </div>
         </div>
         <Link href="/history">
           <button className="btn ghost small" type="button">
@@ -80,9 +83,20 @@ export default async function HistoryDetailPage({
                 {sets.map((s) => (
                   <span className="done-set" key={s.id}>
                     <span className="done-set-no">{s.set_index}</span>
-                    {ce.mode === "hold"
-                      ? `${s.hold_seconds_done ?? "—"} 秒`
-                      : `${s.weight_kg ?? "—"} kg × ${s.reps_done ?? "—"}`}
+                    {ce.mode === "hold" ? (
+                      `${s.hold_seconds_done ?? "—"} 秒`
+                    ) : (
+                      <>
+                        {s.weight_kg ?? "—"} kg × {s.reps_done ?? "—"}
+                        {ce.mode === "interval" &&
+                          s.hold_seconds_done != null && (
+                            <span className="set-partial">
+                              {" "}
+                              · {s.hold_seconds_done} 秒
+                            </span>
+                          )}
+                      </>
+                    )}
                   </span>
                 ))}
               </div>

@@ -55,6 +55,9 @@ export default async function HistoryPage() {
                 <div className="ex-title">{s.card_title ?? "（卡片已刪除）"}</div>
                 <div className="ex-defaults">
                   {s.exerciseCount} 個動作 · {s.setCount} 組
+                  {s.durationMinutes !== null && (
+                    <> · {s.durationMinutes} 分鐘</>
+                  )}
                 </div>
                 {s.overall_note && (
                   <p className="thesis session-note">{s.overall_note}</p>

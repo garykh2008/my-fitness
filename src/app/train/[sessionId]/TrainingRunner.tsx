@@ -10,6 +10,7 @@ import {
 } from "../actions";
 import { formatTarget } from "@/lib/types";
 import type {
+  ExerciseMode,
   WorkoutSession,
   WorkoutCardDetail,
   CardExerciseWithExercise,
@@ -20,6 +21,7 @@ import type { PreviousPerformance } from "@/lib/queries";
 import type { SoundSettings } from "./useSoundSettings";
 import RestTimer from "./RestTimer";
 import HoldTimer from "./HoldTimer";
+import IntervalTimer from "./IntervalTimer";
 import { useWakeLock } from "./useWakeLock";
 import { unlockAudio } from "./timer-utils";
 import { useSoundSettings } from "./useSoundSettings";
@@ -65,7 +67,7 @@ function prefillFor(
 /** 把上次的表現寫成一行，例如 "上次 9/8：20kg × 10、20kg × 9" */
 function describePrevious(
   prev: PreviousPerformance,
-  mode: "reps" | "hold"
+  mode: ExerciseMode
 ): string {
   const d = new Date(prev.performed_at);
   const when = `${d.getMonth() + 1}/${d.getDate()}`;
@@ -117,9 +119,78 @@ function SetEditor({
   const [hold, setHold] = useState<number>(
     src?.hold_seconds_done ?? ce.target_hold_seconds ?? 30
   );
+  // interval 提前結束時的實際秒數；做滿就是 null（不用特別記）
+  const [elapsed, setElapsed] = useState<number | null>(
+    src?.hold_seconds_done ?? null
+  );
 
   const hint =
     prefill && !prefill.isRecord ? "已帶入參考值，滾一下改成實際做的" : null;
+
+  // 時間制：計時器只負責報時，成績要自己填 —— 這段時間內做了幾下才是重點
+  if (ce.mode === "interval") {
+    const target = ce.target_interval_seconds ?? 45;
+    return (
+      <div className="set-editor">
+        <div className="set-no">第 {setIndex} 組</div>
+
+        <IntervalTimer
+          targetSeconds={target}
+          sound={sound}
+          onFinish={(secondsDone) =>
+            setElapsed(secondsDone < target ? secondsDone : null)
+          }
+        />
+
+        {elapsed !== null && (
+          <div className="prefill-hint">
+            提前在 {elapsed} 秒結束，會一起記下來
+          </div>
+        )}
+
+        <div className="manual-caption" style={{ marginTop: 14 }}>
+          這 {target} 秒做了多少
+        </div>
+        <div className="wheels">
+          <Wheel
+            label="重量"
+            unit="kg"
+            values={WEIGHT_VALUES}
+            value={weight}
+            onChange={setWeight}
+          />
+          <Wheel
+            label="次數"
+            values={REPS_VALUES}
+            value={reps}
+            onChange={setReps}
+          />
+        </div>
+
+        <div className="editor-actions">
+          <button
+            className="btn primary"
+            type="button"
+            disabled={saving}
+            onClick={() =>
+              onSave({
+                weight_kg: String(weight),
+                reps_done: String(reps),
+                ...(elapsed !== null
+                  ? { hold_seconds_done: String(elapsed) }
+                  : {}),
+              })
+            }
+          >
+            {saving ? "儲存中…" : "完成這組"}
+          </button>
+          <button className="btn ghost" type="button" onClick={onCancel}>
+            取消
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (ce.mode === "hold") {
     return (
@@ -506,17 +577,24 @@ export default function TrainingRunner({
                       <span className="set-no">第 {n} 組</span>
                       <span className="set-val">
                         {existing ? (
-                          ce.mode === "reps" ? (
+                          ce.mode === "hold" ? (
+                            <>{existing.hold_seconds_done ?? "—"} 秒</>
+                          ) : (
                             <>
                               {existing.weight_kg ?? "—"} kg ×{" "}
                               {existing.reps_done ?? "—"}
+                              {ce.mode === "interval" &&
+                                existing.hold_seconds_done != null && (
+                                  <span className="set-partial">
+                                    {" "}
+                                    · {existing.hold_seconds_done} 秒
+                                  </span>
+                                )}
                             </>
-                          ) : (
-                            <>{existing.hold_seconds_done ?? "—"} 秒</>
                           )
                         ) : (
                           <span className="set-empty">
-                            {ce.mode === "hold" ? "點一下開始計時" : "點一下記錄"}
+                            {ce.mode === "reps" ? "點一下記錄" : "點一下開始計時"}
                           </span>
                         )}
                       </span>

@@ -3,7 +3,8 @@
 import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createExercise, updateExercise, deleteExercise } from "./actions";
-import { CATEGORIES, categoryLabel } from "@/lib/types";
+import { CATEGORIES, categoryLabel, MODE_LABELS } from "@/lib/types";
+import type { ExerciseMode } from "@/lib/types";
 import MediaPreview from "../MediaPreview";
 import type { Exercise } from "@/lib/types";
 
@@ -22,15 +23,17 @@ function defaultsLine(ex: Exercise): string {
   const target =
     ex.default_mode === "hold"
       ? `${ex.default_hold_seconds ?? 30} 秒`
-      : ex.default_reps_min && ex.default_reps_max
-        ? `${ex.default_reps_min}–${ex.default_reps_max} 下`
-        : "自訂";
+      : ex.default_mode === "interval"
+        ? `${ex.default_interval_seconds ?? 45} 秒`
+        : ex.default_reps_min && ex.default_reps_max
+          ? `${ex.default_reps_min}–${ex.default_reps_max} 下`
+          : "自訂";
   const rest = ex.default_rest_seconds != null ? ` · 休息 ${ex.default_rest_seconds}s` : "";
   return `${sets} 組 × ${target}${rest}`;
 }
 
 function ExerciseFields({ ex }: { ex?: Exercise }) {
-  const [mode, setMode] = useState<"reps" | "hold">(ex?.default_mode ?? "reps");
+  const [mode, setMode] = useState<ExerciseMode>(ex?.default_mode ?? "reps");
 
   return (
     <>
@@ -81,10 +84,13 @@ function ExerciseFields({ ex }: { ex?: Exercise }) {
           <select
             name="default_mode"
             value={mode}
-            onChange={(e) => setMode(e.target.value as "reps" | "hold")}
+            onChange={(e) => setMode(e.target.value as ExerciseMode)}
           >
-            <option value="reps">次數型</option>
-            <option value="hold">持續秒數型</option>
+            {(Object.keys(MODE_LABELS) as ExerciseMode[]).map((m) => (
+              <option key={m} value={m}>
+                {MODE_LABELS[m]}
+              </option>
+            ))}
           </select>
         </div>
         <div className="field">
@@ -119,7 +125,7 @@ function ExerciseFields({ ex }: { ex?: Exercise }) {
             />
           </div>
         </div>
-      ) : (
+      ) : mode === "hold" ? (
         <div className="field">
           <label>持續秒數</label>
           <input
@@ -127,6 +133,19 @@ function ExerciseFields({ ex }: { ex?: Exercise }) {
             type="number"
             min={1}
             defaultValue={ex?.default_hold_seconds ?? 30}
+          />
+        </div>
+      ) : (
+        <div className="field">
+          <label>
+            每組秒數
+            <span className="dim-hint"> · 這段時間內盡量做，次數是結果</span>
+          </label>
+          <input
+            name="default_interval_seconds"
+            type="number"
+            min={1}
+            defaultValue={ex?.default_interval_seconds ?? 45}
           />
         </div>
       )}
@@ -337,8 +356,10 @@ export default function ExerciseManager({ exercises }: { exercises: Exercise[] }
                     {ex.default_equipment && (
                       <span className="chip">{ex.default_equipment}</span>
                     )}
-                    {ex.default_mode === "hold" && (
-                      <span className="chip mode">持續秒數</span>
+                    {ex.default_mode !== "reps" && (
+                      <span className="chip mode">
+                        {MODE_LABELS[ex.default_mode]}
+                      </span>
                     )}
                     {ex.default_tempo && (
                       <span className="chip tempo">{ex.default_tempo}</span>

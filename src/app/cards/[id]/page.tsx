@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCardDetail, getLatestSession } from "@/lib/queries";
-import { formatTarget } from "@/lib/types";
+import { formatTarget, estimateCardMinutes } from "@/lib/types";
 import { startSession } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +16,7 @@ export default async function CardPage({
   if (!card) notFound();
 
   const latest = await getLatestSession(id);
+  const estimate = estimateCardMinutes(card.card_exercises);
 
   return (
     <main className="shell">
@@ -36,8 +37,18 @@ export default async function CardPage({
         </Link>
       </div>
 
-      {card.thesis && (
-        <div className="notice info">{card.thesis}</div>
+      {card.thesis && <div className="notice info">{card.thesis}</div>}
+
+      {card.card_exercises.length > 0 && (
+        <div className="meta-row">
+          <span className="chip">
+            {card.card_exercises.length} 個動作
+          </span>
+          <span className="chip">
+            {card.card_exercises.reduce((n, ce) => n + (ce.target_sets ?? 3), 0)} 組
+          </span>
+          {estimate && <span className="chip mode">約 {estimate} 分鐘</span>}
+        </div>
       )}
 
       {card.card_exercises.length === 0 && (

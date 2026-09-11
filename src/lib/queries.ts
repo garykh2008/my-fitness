@@ -47,6 +47,8 @@ export interface SessionDetail {
   card: WorkoutCardDetail;
   /** key = card_exercise_id */
   logs: Map<string, ExerciseLogWithSets>;
+  /** 實際花了幾分鐘；只記了一組時回 null */
+  durationMinutes: number | null;
 }
 
 export async function getSessionDetail(
@@ -80,7 +82,11 @@ export async function getSessionDetail(
     map.set(log.card_exercise_id, log);
   }
 
-  return { session, card, logs: map };
+  const duration = durationOf(
+    (logs ?? []).flatMap((l) => l.set_logs.map((s) => s.completed_at))
+  );
+
+  return { session, card, logs: map, durationMinutes: duration };
 }
 
 export interface PreviousPerformance {
@@ -159,6 +165,26 @@ export interface SessionSummary {
   card_title: string | null;
   exerciseCount: number;
   setCount: number;
+  /** 實際花了幾分鐘；只記了一組時無從得知時長，回 null */
+  durationMinutes: number | null;
+}
+
+/**
+ * 一次訓練實際花了多久。
+ *
+ * 沒有 ended_at 欄位，用「最後一組的 completed_at 減去第一組的」來算。
+ * 刻意不從 session.performed_at 起算：那是按下「開始訓練」的時刻，
+ * 可能離真正開始有一段距離（換衣服、找啞鈴、被打斷），
+ * 用第一組到最後一組才是真的在練的時間。
+ *
+ * 只有一組時沒有區間可算，回 null 而不是 0 —— 「不知道」跟「0 分鐘」不一樣。
+ */
+function durationOf(times: string[]): number | null {
+  if (times.length < 2) return null;
+  const ms = times.map((t) => new Date(t).getTime()).filter(Number.isFinite);
+  if (ms.length < 2) return null;
+  const minutes = (Math.max(...ms) - Math.min(...ms)) / 60000;
+  return Math.max(1, Math.round(minutes));
 }
 
 /**
@@ -175,7 +201,7 @@ export async function listSessions(limit = 60): Promise<SessionSummary[]> {
     .select(
       `id, performed_at, overall_note,
        workout_cards ( title ),
-       exercise_logs ( id, set_logs ( id ) )`
+       exercise_logs ( id, set_logs ( id, completed_at ) )`
     )
     .order("performed_at", { ascending: false })
     .limit(limit)
@@ -185,7 +211,10 @@ export async function listSessions(limit = 60): Promise<SessionSummary[]> {
         performed_at: string;
         overall_note: string | null;
         workout_cards: { title: string } | null;
-        exercise_logs: { id: string; set_logs: { id: string }[] }[];
+        exercise_logs: {
+          id: string;
+          set_logs: { id: string; completed_at: string }[];
+        }[];
       }[]
     >();
 
@@ -200,6 +229,9 @@ export async function listSessions(limit = 60): Promise<SessionSummary[]> {
       card_title: s.workout_cards?.title ?? null,
       exerciseCount: s.exercise_logs.length,
       setCount: s.exercise_logs.reduce((n, l) => n + l.set_logs.length, 0),
+      durationMinutes: durationOf(
+        s.exercise_logs.flatMap((l) => l.set_logs.map((x) => x.completed_at))
+      ),
     }));
 }
 

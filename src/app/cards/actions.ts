@@ -177,7 +177,8 @@ export async function addCardExercise(
   if (!workout_card_id) return { error: "缺少卡片 id。" };
   if (!exercise_id) return { error: "請選一個動作。" };
 
-  const mode = String(formData.get("mode") ?? "reps") === "hold" ? "hold" : "reps";
+  const modeRaw = String(formData.get("mode") ?? "reps");
+  const mode = modeRaw === "hold" || modeRaw === "interval" ? modeRaw : "reps";
   const supabase = await getSupabase();
 
   // 放到最後面
@@ -200,6 +201,8 @@ export async function addCardExercise(
     target_reps_max: mode === "reps" ? int(formData, "target_reps_max") : null,
     target_hold_seconds:
       mode === "hold" ? int(formData, "target_hold_seconds") : null,
+    target_interval_seconds:
+      mode === "interval" ? int(formData, "target_interval_seconds") : null,
     tempo_text: text(formData, "tempo_text"),
     cue_text: text(formData, "cue_text"),
     rest_seconds: int(formData, "rest_seconds"),
@@ -220,7 +223,8 @@ export async function updateCardExercise(
   const workout_card_id = String(formData.get("workout_card_id") ?? "");
   if (!id) return { error: "缺少動作設定 id。" };
 
-  const mode = String(formData.get("mode") ?? "reps") === "hold" ? "hold" : "reps";
+  const modeRaw = String(formData.get("mode") ?? "reps");
+  const mode = modeRaw === "hold" || modeRaw === "interval" ? modeRaw : "reps";
   const supabase = await getSupabase();
 
   const { error } = await supabase
@@ -232,6 +236,8 @@ export async function updateCardExercise(
       target_reps_max: mode === "reps" ? int(formData, "target_reps_max") : null,
       target_hold_seconds:
         mode === "hold" ? int(formData, "target_hold_seconds") : null,
+      target_interval_seconds:
+        mode === "interval" ? int(formData, "target_interval_seconds") : null,
       tempo_text: text(formData, "tempo_text"),
       cue_text: text(formData, "cue_text"),
       rest_seconds: int(formData, "rest_seconds"),
