@@ -22,6 +22,7 @@ interface ExerciseInput {
   reps_min?: unknown;
   reps_max?: unknown;
   hold_seconds?: unknown;
+  interval_seconds?: unknown;
   tempo?: unknown;
   cue?: unknown;
   rest_seconds?: unknown;
@@ -68,16 +69,33 @@ export async function POST(request: Request) {
       const name = str(raw.name_zh, `${where}.name_zh`, true)!;
 
       const modeRaw = str(raw.mode, `${where}.mode`);
-      if (modeRaw !== null && modeRaw !== "reps" && modeRaw !== "hold") {
-        throw new BadRequest(`${where}.mode 必須是 reps 或 hold`);
+      if (
+        modeRaw !== null &&
+        modeRaw !== "reps" &&
+        modeRaw !== "hold" &&
+        modeRaw !== "interval"
+      ) {
+        throw new BadRequest(`${where}.mode 必須是 reps / hold / interval`);
       }
 
       const repsMin = int(raw.reps_min, `${where}.reps_min`);
       const repsMax = int(raw.reps_max, `${where}.reps_max`);
       const holdSeconds = int(raw.hold_seconds, `${where}.hold_seconds`);
+      const intervalSeconds = int(
+        raw.interval_seconds,
+        `${where}.interval_seconds`
+      );
 
       if (repsMin !== null && repsMax !== null && repsMin > repsMax) {
         throw new BadRequest(`${where}.reps_min 不可大於 reps_max`);
+      }
+
+      // interval 的成績是「這段時間內做了幾下」，次數是結果不是目標。
+      // 先擋在這裡，錯誤訊息比 DB 的 check constraint 好懂。
+      if (modeRaw === "interval" && (repsMin !== null || repsMax !== null)) {
+        throw new BadRequest(
+          `${where} 是 interval 型，不要給 reps_min / reps_max（做幾下是結果，不是目標）`
+        );
       }
 
       return {
@@ -85,11 +103,12 @@ export async function POST(request: Request) {
         name_en: str(raw.name_en, `${where}.name_en`),
         category: str(raw.category, `${where}.category`),
         equipment: str(raw.equipment, `${where}.equipment`),
-        mode: modeRaw as "reps" | "hold" | null,
+        mode: modeRaw as "reps" | "hold" | "interval" | null,
         sets: int(raw.sets, `${where}.sets`),
         repsMin,
         repsMax,
         holdSeconds,
+        intervalSeconds,
         tempo: str(raw.tempo, `${where}.tempo`),
         cue: str(raw.cue, `${where}.cue`),
         rest: int(raw.rest_seconds, `${where}.rest_seconds`),
@@ -132,6 +151,8 @@ export async function POST(request: Request) {
           default_reps_min: mode === "reps" ? (it.repsMin ?? 10) : null,
           default_reps_max: mode === "reps" ? (it.repsMax ?? 15) : null,
           default_hold_seconds: mode === "hold" ? (it.holdSeconds ?? 30) : null,
+          default_interval_seconds:
+            mode === "interval" ? (it.intervalSeconds ?? 45) : null,
           default_tempo: it.tempo,
           default_rest_seconds: it.rest ?? 60,
         };
@@ -176,6 +197,14 @@ export async function POST(request: Request) {
       if (mode === "hold" && (it.holdSeconds ?? ex.default_hold_seconds) == null) {
         throw new BadRequest(`${it.where} 是 hold 型，必須提供 hold_seconds`);
       }
+      if (
+        mode === "interval" &&
+        (it.intervalSeconds ?? ex.default_interval_seconds) == null
+      ) {
+        throw new BadRequest(
+          `${it.where} 是 interval 型，必須提供 interval_seconds`
+        );
+      }
 
       return {
         workout_card_id: card.id,
@@ -190,6 +219,10 @@ export async function POST(request: Request) {
           mode === "reps" ? (it.repsMax ?? ex.default_reps_max ?? 15) : null,
         target_hold_seconds:
           mode === "hold" ? (it.holdSeconds ?? ex.default_hold_seconds ?? 30) : null,
+        target_interval_seconds:
+          mode === "interval"
+            ? (it.intervalSeconds ?? ex.default_interval_seconds ?? 45)
+            : null,
         tempo_text: it.tempo ?? ex.default_tempo,
         cue_text: it.cue,
         rest_seconds: it.rest ?? ex.default_rest_seconds ?? 60,
