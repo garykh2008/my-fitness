@@ -41,6 +41,164 @@ interface CardInput {
 //
 // 教練要先看得到「已經有哪些課表」才不會重複建一張幾乎一樣的卡，
 // 也才能回答「我的推日現在排了什麼」。
+/**
+ * 把教練送來的動作清單驗證成內部形狀。POST 與 PATCH 共用。
+ *
+ * mode 刻意保留 null（＝教練沒指定），等查到動作之後再用動作庫的
+ * default_mode 補。直接預設成 "reps" 會把棒式這種 hold 型動作弄錯。
+ */
+function parseExerciseItems(raw: unknown) {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    throw new BadRequest("exercises 必須是至少一個元素的陣列");
+  }
+
+  return (raw as ExerciseInput[]).map((item, i) => {
+    const where = `exercises[${i}]`;
+    const name = str(item.name_zh, `${where}.name_zh`, true)!;
+
+    const modeRaw = str(item.mode, `${where}.mode`);
+    if (
+      modeRaw !== null &&
+      modeRaw !== "reps" &&
+      modeRaw !== "hold" &&
+      modeRaw !== "interval"
+    ) {
+      throw new BadRequest(`${where}.mode 必須是 reps / hold / interval`);
+    }
+
+    const repsMin = int(item.reps_min, `${where}.reps_min`);
+    const repsMax = int(item.reps_max, `${where}.reps_max`);
+    const holdSeconds = int(item.hold_seconds, `${where}.hold_seconds`);
+    const intervalSeconds = int(
+      item.interval_seconds,
+      `${where}.interval_seconds`
+    );
+
+    if (repsMin !== null && repsMax !== null && repsMin > repsMax) {
+      throw new BadRequest(`${where}.reps_min 不可大於 reps_max`);
+    }
+
+    // interval 的成績是「這段時間內做了幾下」，次數是結果不是目標。
+    // 先擋在這裡，錯誤訊息比 DB 的 check constraint 好懂。
+    if (modeRaw === "interval" && (repsMin !== null || repsMax !== null)) {
+      throw new BadRequest(
+        `${where} 是 interval 型，不要給 reps_min / reps_max（做幾下是結果，不是目標）`
+      );
+    }
+
+    return {
+      name,
+      name_en: str(item.name_en, `${where}.name_en`),
+      category: str(item.category, `${where}.category`),
+      equipment: str(item.equipment, `${where}.equipment`),
+      mode: modeRaw as "reps" | "hold" | "interval" | null,
+      sets: int(item.sets, `${where}.sets`),
+      repsMin,
+      repsMax,
+      holdSeconds,
+      intervalSeconds,
+      tempo: str(item.tempo, `${where}.tempo`),
+      cue: str(item.cue, `${where}.cue`),
+      rest: int(item.rest_seconds, `${where}.rest_seconds`),
+      where,
+    };
+  });
+}
+
+type ParsedItem = ReturnType<typeof parseExerciseItems>[number];
+
+/**
+ * 依 mode 把目標欄位對齊，避免踩到 DB 的 check constraint。
+ * 教練沒指定的用動作庫的預設值補。
+ */
+function targetsFor(it: ParsedItem, ex: Exercise) {
+  const mode = it.mode ?? ex.default_mode ?? "reps";
+
+  if (mode === "hold" && (it.holdSeconds ?? ex.default_hold_seconds) == null) {
+    throw new BadRequest(`${it.where} 是 hold 型，必須提供 hold_seconds`);
+  }
+  if (
+    mode === "interval" &&
+    (it.intervalSeconds ?? ex.default_interval_seconds) == null
+  ) {
+    throw new BadRequest(`${it.where} 是 interval 型，必須提供 interval_seconds`);
+  }
+
+  return {
+    mode,
+    target_sets: it.sets ?? ex.default_sets ?? 3,
+    target_reps_min:
+      mode === "reps" ? (it.repsMin ?? ex.default_reps_min ?? 10) : null,
+    target_reps_max:
+      mode === "reps" ? (it.repsMax ?? ex.default_reps_max ?? 15) : null,
+    target_hold_seconds:
+      mode === "hold" ? (it.holdSeconds ?? ex.default_hold_seconds ?? 30) : null,
+    target_interval_seconds:
+      mode === "interval"
+        ? (it.intervalSeconds ?? ex.default_interval_seconds ?? 45)
+        : null,
+    tempo_text: it.tempo ?? ex.default_tempo,
+    cue_text: it.cue,
+    rest_seconds: it.rest ?? ex.default_rest_seconds ?? 60,
+  };
+}
+
+/** 找出清單裡動作庫還沒有的，建起來，回傳 name_zh -> Exercise 的對照 */
+async function resolveExercises(
+  supabase: ReturnType<typeof getAdminSupabase>,
+  userId: string,
+  items: ParsedItem[]
+): Promise<{ byName: Map<string, Exercise>; created: string[] }> {
+  const names = [...new Set(items.map((it) => it.name))];
+
+  const { data: existing, error } = await supabase
+    .from("exercises")
+    .select("*")
+    .eq("user_id", userId)
+    .in("name_zh", names)
+    .returns<Exercise[]>();
+
+  if (error) throw new Error(`查詢動作庫失敗：${error.message}`);
+
+  const byName = new Map((existing ?? []).map((e) => [e.name_zh, e]));
+  const missing = names.filter((n) => !byName.has(n));
+
+  if (missing.length > 0) {
+    const rows = missing.map((name) => {
+      const it = items.find((x) => x.name === name)!;
+      const mode = it.mode ?? "reps";
+      return {
+        user_id: userId,
+        name_zh: name,
+        name_en: it.name_en,
+        category: it.category,
+        default_equipment: it.equipment,
+        default_cue: it.cue,
+        default_mode: mode,
+        default_sets: it.sets ?? 3,
+        default_reps_min: mode === "reps" ? (it.repsMin ?? 10) : null,
+        default_reps_max: mode === "reps" ? (it.repsMax ?? 15) : null,
+        default_hold_seconds: mode === "hold" ? (it.holdSeconds ?? 30) : null,
+        default_interval_seconds:
+          mode === "interval" ? (it.intervalSeconds ?? 45) : null,
+        default_tempo: it.tempo,
+        default_rest_seconds: it.rest ?? 60,
+      };
+    });
+
+    const { data: inserted, error: insErr } = await supabase
+      .from("exercises")
+      .insert(rows)
+      .select("*")
+      .returns<Exercise[]>();
+
+    if (insErr) throw new Error(`建立動作失敗：${insErr.message}`);
+    for (const e of inserted ?? []) byName.set(e.name_zh, e);
+  }
+
+  return { byName, created: missing };
+}
+
 export async function GET(request: Request) {
   try {
     assertCoachAuthorized(request);
@@ -151,117 +309,16 @@ export async function POST(request: Request) {
       throw new BadRequest("exercises 必須是至少一個元素的陣列");
     }
 
-    // --- 先把輸入整理乾淨，全部驗證過再開始寫入 ---
-    //
-    // mode 刻意保留 null（＝教練沒指定），等查到動作之後再用動作庫的
-    // default_mode 補。直接預設成 "reps" 會把棒式這種 hold 型動作弄錯。
-    const items = (body.exercises as ExerciseInput[]).map((raw, i) => {
-      const where = `exercises[${i}]`;
-      const name = str(raw.name_zh, `${where}.name_zh`, true)!;
-
-      const modeRaw = str(raw.mode, `${where}.mode`);
-      if (
-        modeRaw !== null &&
-        modeRaw !== "reps" &&
-        modeRaw !== "hold" &&
-        modeRaw !== "interval"
-      ) {
-        throw new BadRequest(`${where}.mode 必須是 reps / hold / interval`);
-      }
-
-      const repsMin = int(raw.reps_min, `${where}.reps_min`);
-      const repsMax = int(raw.reps_max, `${where}.reps_max`);
-      const holdSeconds = int(raw.hold_seconds, `${where}.hold_seconds`);
-      const intervalSeconds = int(
-        raw.interval_seconds,
-        `${where}.interval_seconds`
-      );
-
-      if (repsMin !== null && repsMax !== null && repsMin > repsMax) {
-        throw new BadRequest(`${where}.reps_min 不可大於 reps_max`);
-      }
-
-      // interval 的成績是「這段時間內做了幾下」，次數是結果不是目標。
-      // 先擋在這裡，錯誤訊息比 DB 的 check constraint 好懂。
-      if (modeRaw === "interval" && (repsMin !== null || repsMax !== null)) {
-        throw new BadRequest(
-          `${where} 是 interval 型，不要給 reps_min / reps_max（做幾下是結果，不是目標）`
-        );
-      }
-
-      return {
-        name,
-        name_en: str(raw.name_en, `${where}.name_en`),
-        category: str(raw.category, `${where}.category`),
-        equipment: str(raw.equipment, `${where}.equipment`),
-        mode: modeRaw as "reps" | "hold" | "interval" | null,
-        sets: int(raw.sets, `${where}.sets`),
-        repsMin,
-        repsMax,
-        holdSeconds,
-        intervalSeconds,
-        tempo: str(raw.tempo, `${where}.tempo`),
-        cue: str(raw.cue, `${where}.cue`),
-        rest: int(raw.rest_seconds, `${where}.rest_seconds`),
-        where,
-      };
-    });
+    const items = parseExerciseItems(body.exercises);
 
     const supabase = getAdminSupabase();
     const userId = await ownerUserId();
 
-    // --- 動作庫：已存在的沿用，沒有的建立 ---
-    const names = [...new Set(items.map((it) => it.name))];
-    const { data: existing, error: exErr } = await supabase
-      .from("exercises")
-      .select("*")
-      .eq("user_id", userId)
-      .in("name_zh", names)
-      .returns<Exercise[]>();
-
-    if (exErr) throw new Error(`查詢動作庫失敗：${exErr.message}`);
-
-    const byName = new Map((existing ?? []).map((e) => [e.name_zh, e]));
-    const missing = names.filter((n) => !byName.has(n));
-    const createdExerciseIds: string[] = [];
-
-    if (missing.length > 0) {
-      const rows = missing.map((name) => {
-        const it = items.find((x) => x.name === name)!;
-        const mode = it.mode ?? "reps";
-        return {
-          user_id: userId,
-          name_zh: name,
-          name_en: it.name_en,
-          category: it.category,
-          default_equipment: it.equipment,
-          default_cue: it.cue,
-          // 新建的動作也要有預設值，下次開課表才不用再填一次
-          default_mode: mode,
-          default_sets: it.sets ?? 3,
-          default_reps_min: mode === "reps" ? (it.repsMin ?? 10) : null,
-          default_reps_max: mode === "reps" ? (it.repsMax ?? 15) : null,
-          default_hold_seconds: mode === "hold" ? (it.holdSeconds ?? 30) : null,
-          default_interval_seconds:
-            mode === "interval" ? (it.intervalSeconds ?? 45) : null,
-          default_tempo: it.tempo,
-          default_rest_seconds: it.rest ?? 60,
-        };
-      });
-
-      const { data: inserted, error } = await supabase
-        .from("exercises")
-        .insert(rows)
-        .select("*")
-        .returns<Exercise[]>();
-
-      if (error) throw new Error(`建立動作失敗：${error.message}`);
-
-      for (const e of inserted ?? []) {
-        byName.set(e.name_zh, e);
-        createdExerciseIds.push(e.id);
-      }
-    }
+    const { byName, created: createdNames } = await resolveExercises(
+      supabase,
+      userId,
+      items
+    );
 
     // --- 建卡 ---
     const { data: card, error: cardErr } = await supabase
@@ -281,52 +338,24 @@ export async function POST(request: Request) {
     // --- 卡內動作（順序就是陣列順序）---
     // 教練沒指定的細項，用動作庫裡的預設值補 ——
     // 這樣「只給動作名稱」也能開出一張參數完整的卡。
-    const rows = items.map((it, i) => {
-      const ex = byName.get(it.name)!;
-      const mode = it.mode ?? ex.default_mode ?? "reps";
-
-      if (mode === "hold" && (it.holdSeconds ?? ex.default_hold_seconds) == null) {
-        throw new BadRequest(`${it.where} 是 hold 型，必須提供 hold_seconds`);
-      }
-      if (
-        mode === "interval" &&
-        (it.intervalSeconds ?? ex.default_interval_seconds) == null
-      ) {
-        throw new BadRequest(
-          `${it.where} 是 interval 型，必須提供 interval_seconds`
-        );
-      }
-
-      return {
-        workout_card_id: card.id,
-        exercise_id: ex.id,
-        order_index: i,
-        mode,
-        target_sets: it.sets ?? ex.default_sets ?? 3,
-        // mode 與目標欄位要對得起來，否則會踩到 DB 的 check constraint
-        target_reps_min:
-          mode === "reps" ? (it.repsMin ?? ex.default_reps_min ?? 10) : null,
-        target_reps_max:
-          mode === "reps" ? (it.repsMax ?? ex.default_reps_max ?? 15) : null,
-        target_hold_seconds:
-          mode === "hold" ? (it.holdSeconds ?? ex.default_hold_seconds ?? 30) : null,
-        target_interval_seconds:
-          mode === "interval"
-            ? (it.intervalSeconds ?? ex.default_interval_seconds ?? 45)
-            : null,
-        tempo_text: it.tempo ?? ex.default_tempo,
-        cue_text: it.cue,
-        rest_seconds: it.rest ?? ex.default_rest_seconds ?? 60,
-      };
-    });
+    const rows = items.map((it, i) => ({
+      workout_card_id: card.id,
+      exercise_id: byName.get(it.name)!.id,
+      order_index: i,
+      ...targetsFor(it, byName.get(it.name)!),
+    }));
 
     const { error: ceErr } = await supabase.from("card_exercises").insert(rows);
 
     if (ceErr) {
       // 不要留下一張空卡跟一堆孤兒動作
       await supabase.from("workout_cards").delete().eq("id", card.id);
-      if (createdExerciseIds.length > 0) {
-        await supabase.from("exercises").delete().in("id", createdExerciseIds);
+      if (createdNames.length > 0) {
+        await supabase
+          .from("exercises")
+          .delete()
+          .eq("user_id", userId)
+          .in("name_zh", createdNames);
       }
       throw new Error(`加入卡片動作失敗：${ceErr.message}`);
     }
@@ -340,11 +369,238 @@ export async function POST(request: Request) {
         status: card.status,
         created_at: card.created_at,
         exercise_count: items.length,
-        created_exercises: missing,
+        created_exercises: createdNames,
         url: base ? `${base}/cards/${card.id}` : `/cards/${card.id}`,
       },
       { status: 201 }
     );
+  } catch (e) {
+    if (e instanceof BadRequest) {
+      return Response.json({ error: e.message }, { status: 400 });
+    }
+    return errorResponse(e);
+  }
+}
+
+interface PatchInput extends CardInput {
+  card_id?: unknown;
+  match_title?: unknown;
+  allow_history_loss?: unknown;
+}
+
+// PATCH /api/coach/cards
+//
+// 修改既有的訓練卡。可以只改標題／邏輯，也可以送一份新的完整動作清單。
+//
+// **關鍵**：exercise_logs 掛在 card_exercises 上，而且是 on delete cascade。
+// 所以不能砍掉重建動作列表 —— 那會把訓練紀錄一起帶走。
+// 做法是依動作名稱比對：還在的就地更新（同一個 row id，歷史保住），
+// 新增的插入，真的被移除的才刪，而且刪之前會先檢查有沒有紀錄。
+export async function PATCH(request: Request) {
+  try {
+    assertCoachAuthorized(request);
+
+    let body: PatchInput;
+    try {
+      body = (await request.json()) as PatchInput;
+    } catch {
+      throw new BadRequest("request body 不是合法的 JSON");
+    }
+
+    const supabase = getAdminSupabase();
+    const userId = await ownerUserId();
+
+    // --- 找出要改哪一張 ---
+    const cardId = str(body.card_id, "card_id");
+    const matchTitle = str(body.match_title, "match_title");
+    if (!cardId && !matchTitle) {
+      throw new BadRequest("請提供 card_id 或 match_title 指定要改哪一張卡");
+    }
+
+    let query = supabase
+      .from("workout_cards")
+      .select("id, title")
+      .eq("user_id", userId);
+    query = cardId ? query.eq("id", cardId) : query.eq("title", matchTitle!);
+
+    const { data: found, error: findErr } = await query.returns<
+      { id: string; title: string }[]
+    >();
+
+    if (findErr) throw new Error(`查詢訓練卡失敗：${findErr.message}`);
+    if (!found || found.length === 0) {
+      throw new BadRequest(
+        `找不到訓練卡${matchTitle ? `「${matchTitle}」` : ""}。先用 list_workout_cards 確認名稱。`
+      );
+    }
+    if (found.length > 1) {
+      throw new BadRequest(
+        `有 ${found.length} 張卡叫「${matchTitle}」，請改用 card_id 指定。`
+      );
+    }
+
+    const card = found[0];
+
+    // --- 卡片本身的欄位 ---
+    const meta: Record<string, unknown> = {};
+    const newTitle = str(body.title, "title");
+    if (newTitle) meta.title = newTitle;
+    if (body.thesis !== undefined) meta.thesis = str(body.thesis, "thesis");
+    if (body.source_note !== undefined) {
+      meta.source_note = str(body.source_note, "source_note");
+    }
+    if (body.status !== undefined) {
+      const st = str(body.status, "status");
+      if (!st || !["draft", "active", "archived"].includes(st)) {
+        throw new BadRequest("status 必須是 draft / active / archived");
+      }
+      meta.status = st;
+    }
+
+    if (Object.keys(meta).length > 0) {
+      meta.updated_at = new Date().toISOString();
+      const { error } = await supabase
+        .from("workout_cards")
+        .update(meta)
+        .eq("id", card.id);
+      if (error) throw new Error(`更新訓練卡失敗：${error.message}`);
+    }
+
+    // --- 動作清單（選填）---
+    let changes: Record<string, unknown> | null = null;
+
+    if (body.exercises !== undefined) {
+      const items = parseExerciseItems(body.exercises);
+      const { byName, created: createdNames } = await resolveExercises(
+        supabase,
+        userId,
+        items
+      );
+
+      const { data: currentRaw, error: curErr } = await supabase
+        .from("card_exercises")
+        .select("id, exercise_id, order_index, exercises ( name_zh )")
+        .eq("workout_card_id", card.id)
+        .order("order_index", { ascending: true })
+        .returns<
+          {
+            id: string;
+            exercise_id: string;
+            order_index: number;
+            exercises: { name_zh: string } | null;
+          }[]
+        >();
+
+      if (curErr) throw new Error(`讀取卡片動作失敗：${curErr.message}`);
+      const current = currentRaw ?? [];
+
+      // 同一個動作可能在一張卡裡出現兩次（例如預先疲勞後再做一次），
+      // 所以用「每個名稱一個佇列」來配對，而不是單一對照表。
+      const pool = new Map<string, typeof current>();
+      for (const row of current) {
+        const n = row.exercises?.name_zh ?? "";
+        if (!pool.has(n)) pool.set(n, []);
+        pool.get(n)!.push(row);
+      }
+
+      const reused: { row: (typeof current)[number]; it: ParsedItem }[] = [];
+      const fresh: ParsedItem[] = [];
+
+      items.forEach((it) => {
+        const q = pool.get(it.name);
+        const row = q && q.length > 0 ? q.shift()! : null;
+        if (row) reused.push({ row, it });
+        else fresh.push(it);
+      });
+
+      // 沒被配對到的就是要移除的
+      const removing = [...pool.values()].flat();
+
+      // 移除前先看有沒有訓練紀錄 —— cascade 會把紀錄一起刪掉
+      if (removing.length > 0) {
+        const { data: logs, error: logErr } = await supabase
+          .from("exercise_logs")
+          .select("card_exercise_id")
+          .in(
+            "card_exercise_id",
+            removing.map((r) => r.id)
+          )
+          .returns<{ card_exercise_id: string }[]>();
+
+        if (logErr) throw new Error(`檢查訓練紀錄失敗：${logErr.message}`);
+
+        const counts = new Map<string, number>();
+        for (const l of logs ?? []) {
+          counts.set(l.card_exercise_id, (counts.get(l.card_exercise_id) ?? 0) + 1);
+        }
+
+        const withHistory = removing
+          .filter((r) => counts.has(r.id))
+          .map((r) => `${r.exercises?.name_zh ?? "?"}（${counts.get(r.id)} 次紀錄）`);
+
+        if (withHistory.length > 0 && body.allow_history_loss !== true) {
+          throw new BadRequest(
+            `這些動作要被移出卡片，但它們有訓練紀錄，刪掉會連紀錄一起消失：` +
+              `${withHistory.join("、")}。` +
+              `確定要連紀錄一起刪的話，再帶 allow_history_loss: true 呼叫一次；` +
+              `只是想換動作的話，建議改成新開一張卡，舊卡封存起來。`
+          );
+        }
+      }
+
+      // 1) 還在的：就地更新，順序與參數換新（row id 不變 → 紀錄保住）
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        const hit = reused.find((r) => r.it === it);
+        if (!hit) continue;
+        const ex = byName.get(it.name)!;
+        const { error } = await supabase
+          .from("card_exercises")
+          .update({ order_index: i, ...targetsFor(it, ex) })
+          .eq("id", hit.row.id);
+        if (error) throw new Error(`更新卡片動作失敗：${error.message}`);
+      }
+
+      // 2) 新增的
+      if (fresh.length > 0) {
+        const rows = fresh.map((it) => ({
+          workout_card_id: card.id,
+          exercise_id: byName.get(it.name)!.id,
+          order_index: items.indexOf(it),
+          ...targetsFor(it, byName.get(it.name)!),
+        }));
+        const { error } = await supabase.from("card_exercises").insert(rows);
+        if (error) throw new Error(`新增卡片動作失敗：${error.message}`);
+      }
+
+      // 3) 移除的
+      if (removing.length > 0) {
+        const { error } = await supabase
+          .from("card_exercises")
+          .delete()
+          .in(
+            "id",
+            removing.map((r) => r.id)
+          );
+        if (error) throw new Error(`移除卡片動作失敗：${error.message}`);
+      }
+
+      changes = {
+        kept: reused.map((r) => r.it.name),
+        added: fresh.map((it) => it.name),
+        removed: removing.map((r) => r.exercises?.name_zh ?? "?"),
+        created_exercises: createdNames,
+      };
+    }
+
+    const base = process.env.APP_BASE_URL ?? "";
+    return Response.json({
+      id: card.id,
+      title: (meta.title as string) ?? card.title,
+      updated_fields: Object.keys(meta).filter((k) => k !== "updated_at"),
+      exercise_changes: changes,
+      url: base ? `${base}/cards/${card.id}` : `/cards/${card.id}`,
+    });
   } catch (e) {
     if (e instanceof BadRequest) {
       return Response.json({ error: e.message }, { status: 400 });

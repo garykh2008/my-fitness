@@ -202,6 +202,55 @@ const TOOLS = [
     },
   },
   {
+    name: "update_workout_card",
+    description:
+      "修改既有的訓練卡：改標題／訓練邏輯／狀態，或送一份新的完整動作清單。" +
+      "先用 list_workout_cards 看現況再改。\n\n" +
+      "**訓練紀錄是掛在「卡片裡的那個動作」上的。** 所以送新清單時，" +
+      "名稱還在的動作會就地更新（順序與參數換新，歷史保住），" +
+      "名稱消失的動作會被移出卡片 —— 如果它有訓練紀錄，這支工具會先擋下來並" +
+      "告訴你會失去幾次紀錄，要真的刪才帶 allow_history_loss: true。" +
+      "只是想換動作練練看的話，建議改成新開一張卡、舊卡封存，歷史才留得住。\n\n" +
+      "只改標題或 thesis 時不要帶 exercises，帶了就會被當成新的完整清單。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        card_id: {
+          type: "string",
+          description: "要改哪一張（list_workout_cards 回傳的 id）。優先於 match_title。",
+        },
+        match_title: {
+          type: "string",
+          description:
+            "用標題指定要改哪一張，例如 \"在家推日：胸肩三頭\"。" +
+            "同名有多張時會要求改用 card_id。",
+        },
+        title: { type: "string", description: "新的標題" },
+        thesis: { type: "string", description: "新的訓練邏輯（一句話）" },
+        source_note: { type: "string", description: "新的來源備註" },
+        status: {
+          type: "string",
+          enum: ["draft", "active", "archived"],
+          description: "改狀態。archived 會讓它從訓練卡列表收起來，紀錄仍保留。",
+        },
+        exercises: {
+          type: "array",
+          minItems: 1,
+          description:
+            "**新的完整動作清單**（不是增量）。沒出現在這份清單裡的動作會被移出卡片。" +
+            "順序就是訓練順序。",
+          items: EXERCISE_ITEM_SCHEMA,
+        },
+        allow_history_loss: {
+          type: "boolean",
+          description:
+            "預設 false。被移除的動作若有訓練紀錄，必須明確帶 true 才會真的刪 —— " +
+            "刪掉的話那些重量與感受筆記都會消失，無法復原。",
+        },
+      },
+    },
+  },
+  {
     name: "get_training_history",
     description:
       "讀最近幾次的實際訓練紀錄：每個動作用了多少重量、做了幾下（或撐幾秒）、" +
@@ -316,6 +365,9 @@ async function runTool(name, args = {}) {
 
     case "create_workout_card":
       return await callApi("/api/coach/cards", { method: "POST", body: args });
+
+    case "update_workout_card":
+      return await callApi("/api/coach/cards", { method: "PATCH", body: args });
 
     default:
       throw new Error(`未知的工具：${name}`);
