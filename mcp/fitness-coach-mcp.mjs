@@ -99,6 +99,23 @@ const TOOLS = [
     inputSchema: { type: "object", properties: {} },
   },
   {
+    name: "list_workout_cards",
+    description:
+      "列出已經存在的訓練卡，含每張卡的動作順序、組數次數、節奏、提示語與預估時長。" +
+      "開新課表前先看這個 —— 不然會重複建一張幾乎一樣的卡，" +
+      "也答不出「我的推日現在排了什麼」。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        status: {
+          type: "string",
+          enum: ["active", "draft", "archived", "all"],
+          description: "要看哪一種狀態的卡，預設 active（正在用的）",
+        },
+      },
+    },
+  },
+  {
     name: "add_exercises",
     description:
       "一次補一批動作進動作庫（不綁訓練卡）。用在「幫我把動作庫補齊」這種場合 —— " +
@@ -207,7 +224,9 @@ const TOOLS = [
   {
     name: "create_workout_card",
     description:
-      "建立一張新的訓練卡。一次送出整份菜單，動作的先後順序就是訓練邏輯" +
+      "建立一張新的訓練卡。**先用 list_workout_cards 看過既有的卡**，" +
+      "不要重複建一張幾乎一樣的。" +
+      "一次送出整份菜單，動作的先後順序就是訓練邏輯" +
       "（例如預先疲勞要把孤立動作排在複合動作前面）。" +
       "組數／次數／休息這些細項不填就會沿用動作庫裡的預設值，" +
       "所以多數情況只要給動作名稱和順序即可；只有這張卡想刻意跟平常練不一樣" +
@@ -278,6 +297,11 @@ async function runTool(name, args = {}) {
   switch (name) {
     case "list_exercises":
       return await callApi("/api/coach/exercises");
+
+    case "list_workout_cards": {
+      const qs = args.status ? `?status=${encodeURIComponent(args.status)}` : "";
+      return await callApi(`/api/coach/cards${qs}`);
+    }
 
     case "add_exercises":
       return await callApi("/api/coach/exercises", { method: "POST", body: args });

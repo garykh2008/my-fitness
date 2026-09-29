@@ -1,7 +1,8 @@
 import { assertCoachAuthorized, errorResponse } from "@/lib/coach-auth";
 import { BadRequest, int, str } from "@/lib/coach-input";
 import { getAdminSupabase, ownerUserId } from "@/lib/supabase-admin";
-import type { Exercise } from "@/lib/types";
+import { estimateCardMinutes, formatTarget } from "@/lib/types";
+import type { CardExercise, Exercise } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,96 @@ interface CardInput {
   source_note?: unknown;
   status?: unknown;
   exercises?: unknown;
+}
+
+// GET /api/coach/cards?status=active
+//
+// 教練要先看得到「已經有哪些課表」才不會重複建一張幾乎一樣的卡，
+// 也才能回答「我的推日現在排了什麼」。
+export async function GET(request: Request) {
+  try {
+    assertCoachAuthorized(request);
+
+    const url = new URL(request.url);
+    const statusParam = url.searchParams.get("status") ?? "active";
+    const wanted =
+      statusParam === "all"
+        ? ["draft", "active", "archived"]
+        : [statusParam];
+
+    if (!wanted.every((s) => ["draft", "active", "archived"].includes(s))) {
+      throw new BadRequest("status 必須是 draft / active / archived / all");
+    }
+
+    const supabase = getAdminSupabase();
+    const userId = await ownerUserId();
+
+    const { data, error } = await supabase
+      .from("workout_cards")
+      .select(
+        `id, title, thesis, source_note, status, created_at,
+         card_exercises ( *, exercises ( name_zh, name_en, default_cue ) )`
+      )
+      .eq("user_id", userId)
+      .in("status", wanted)
+      .order("created_at", { ascending: false })
+      .returns<
+        {
+          id: string;
+          title: string;
+          thesis: string | null;
+          source_note: string | null;
+          status: string;
+          created_at: string;
+          card_exercises: (CardExercise & {
+            exercises: {
+              name_zh: string;
+              name_en: string | null;
+              default_cue: string | null;
+            } | null;
+          })[];
+        }[]
+      >();
+
+    if (error) throw new Error(`讀取訓練卡失敗：${error.message}`);
+
+    const cards = (data ?? []).map((c) => {
+      // PostgREST 的巢狀結果不保證順序，而順序本身就是訓練邏輯
+      const ordered = [...c.card_exercises].sort(
+        (a, b) => a.order_index - b.order_index
+      );
+
+      return {
+        id: c.id,
+        title: c.title,
+        thesis: c.thesis,
+        source_note: c.source_note,
+        status: c.status,
+        created_at: c.created_at,
+        exercise_count: ordered.length,
+        total_sets: ordered.reduce((n, ce) => n + (ce.target_sets ?? 3), 0),
+        estimated_minutes: estimateCardMinutes(ordered),
+        exercises: ordered.map((ce, i) => ({
+          order: i + 1,
+          name_zh: ce.exercises?.name_zh ?? "(動作已刪除)",
+          mode: ce.mode,
+          sets: ce.target_sets,
+          target: formatTarget(ce),
+          tempo: ce.tempo_text,
+          // 卡片沒覆寫就是用動作庫的預設 cue，教練看到的要跟 app 顯示的一致
+          cue: ce.cue_text ?? ce.exercises?.default_cue ?? null,
+          rest_seconds: ce.rest_seconds,
+        })),
+      };
+    });
+
+    return Response.json({ count: cards.length, cards });
+  } catch (e) {
+    if (e instanceof BadRequest) {
+      return Response.json({ error: e.message }, { status: 400 });
+    }
+    return errorResponse(e);
+  }
 }
 
 export async function POST(request: Request) {
